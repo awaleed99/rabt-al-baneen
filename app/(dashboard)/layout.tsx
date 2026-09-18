@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Sidebar } from '@/components/layout/sidebar'
@@ -9,6 +10,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) redirect('/login')
+
+  const cookieStore = await cookies()
+  const mustChange =
+    cookieStore.get('must_change_password')?.value === 'true' ||
+    user.user_metadata?.must_change_password === true
+
+  if (mustChange) {
+    redirect('/change-password')
+  }
 
   let { data: profile } = await supabase
     .from('profiles')
