@@ -1,24 +1,32 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { formatDistanceToNow, format, differenceInDays, differenceInYears } from 'date-fns'
+import { arSA } from 'date-fns/locale'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+function getLocale() {
+  if (typeof document !== 'undefined') {
+    return document.documentElement.lang === 'en' ? undefined : arSA
+  }
+  return arSA
+}
+
 export function formatDate(date: string | null | undefined): string {
   if (!date) return '—'
-  return format(new Date(date), 'MMM d, yyyy')
+  return format(new Date(date), 'd MMMM yyyy', { locale: getLocale() })
 }
 
 export function formatDateTime(date: string | null | undefined): string {
   if (!date) return '—'
-  return format(new Date(date), 'MMM d, yyyy · h:mm a')
+  return format(new Date(date), 'd MMM yyyy · h:mm a', { locale: getLocale() })
 }
 
 export function formatRelative(date: string | null | undefined): string {
   if (!date) return '—'
-  return formatDistanceToNow(new Date(date), { addSuffix: true })
+  return formatDistanceToNow(new Date(date), { addSuffix: true, locale: getLocale() })
 }
 
 export function calculateAge(dob: string | null | undefined): number | null {

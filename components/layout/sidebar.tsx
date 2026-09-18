@@ -121,7 +121,7 @@ export function Sidebar({ profile }: SidebarProps) {
       {/* Desktop sidebar */}
       <aside
         className="hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 border-e border-white/10"
-        style={{ background: 'hsl(var(--sidebar-bg))' }}
+        style={{ background: 'var(--color-sidebar-bg)' }}
       >
         <SidebarContent />
       </aside>
@@ -145,7 +145,7 @@ export function Sidebar({ profile }: SidebarProps) {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" />
           <aside
             className="relative flex flex-col w-64 h-full shadow-2xl"
-            style={{ background: 'hsl(var(--sidebar-bg))' }}
+            style={{ background: 'var(--color-sidebar-bg)' }}
             onClick={e => e.stopPropagation()}
           >
             <button
