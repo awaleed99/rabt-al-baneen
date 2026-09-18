@@ -1,6 +1,6 @@
 'use client'
 
-import { Users, CalendarCheck, AlertCircle, TrendingUp, Clock, Plus } from 'lucide-react'
+import { Users, CalendarCheck, AlertCircle, TrendingUp, Clock, Plus, GraduationCap, Sparkles } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { Button } from '@/components/ui/button-custom'
 import { formatRelative, formatDateTime, getOverdueDays } from '@/lib/utils'
@@ -28,21 +28,40 @@ export function DashboardClient({ stats, profile }: DashboardClientProps) {
       color: 'text-primary',
       bg: 'bg-primary/10',
       sub: t('stat_total_boys_sub'),
+      href: '/boys',
+    },
+    {
+      label: t('stat_kg1'),
+      value: stats.kg1Count ?? 0,
+      icon: GraduationCap,
+      color: 'text-blue-600 dark:text-blue-400',
+      bg: 'bg-blue-500/10',
+      sub: t('stat_kg1_sub'),
+      href: '/boys?kg=kg1',
+    },
+    {
+      label: t('stat_kg2'),
+      value: stats.kg2Count ?? 0,
+      icon: Sparkles,
+      color: 'text-emerald-600 dark:text-emerald-400',
+      bg: 'bg-emerald-500/10',
+      sub: t('stat_kg2_sub'),
+      href: '/boys?kg=kg2',
     },
     {
       label: t('stat_total_visits'),
       value: stats.totalCheckIns,
       icon: CalendarCheck,
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-500/10',
+      color: 'text-teal-600 dark:text-teal-400',
+      bg: 'bg-teal-500/10',
       sub: t('stat_total_visits_sub'),
     },
     {
       label: t('stat_recent_visits'),
       value: stats.recentCheckIns,
       icon: TrendingUp,
-      color: 'text-blue-500',
-      bg: 'bg-blue-500/10',
+      color: 'text-sky-600 dark:text-sky-400',
+      bg: 'bg-sky-500/10',
       sub: t('stat_recent_visits_sub'),
     },
     {
@@ -77,19 +96,31 @@ export function DashboardClient({ stats, profile }: DashboardClientProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {cards.map((card) => (
-          <div key={card.label} className="bg-card border border-border rounded-2xl p-6 card-hover shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-semibold text-muted-foreground">{card.label}</span>
-              <div className={`w-11 h-11 rounded-xl ${card.bg} flex items-center justify-center shadow-xs`}>
-                <card.icon className={`w-5 h-5 ${card.color}`} />
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {cards.map((card) => {
+          const content = (
+            <div className="bg-card border border-border rounded-2xl p-6 card-hover shadow-xs h-full">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-semibold text-muted-foreground">{card.label}</span>
+                <div className={`w-11 h-11 rounded-xl ${card.bg} flex items-center justify-center shadow-xs`}>
+                  <card.icon className={`w-5 h-5 ${card.color}`} />
+                </div>
               </div>
+              <p className="text-3xl font-extrabold text-foreground">{card.value}</p>
+              <p className="text-xs text-muted-foreground mt-1.5">{card.sub}</p>
             </div>
-            <p className="text-3xl font-extrabold text-foreground">{card.value}</p>
-            <p className="text-xs text-muted-foreground mt-1.5">{card.sub}</p>
-          </div>
-        ))}
+          )
+
+          return card.href ? (
+            <Link key={card.label} href={card.href} className="block transition-transform hover:-translate-y-0.5">
+              {content}
+            </Link>
+          ) : (
+            <div key={card.label}>
+              {content}
+            </div>
+          )
+        })}
       </div>
 
       {/* Recent Activity */}

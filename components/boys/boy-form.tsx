@@ -3,13 +3,14 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, User, MapPin, Calendar, Phone, FileText, X } from 'lucide-react'
+import { Upload, User, MapPin, Calendar, Phone, FileText, X, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button-custom'
 import { Input, Textarea } from '@/components/ui/input-custom'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { createBoy, updateBoy, uploadBoyImage } from '@/lib/actions/boys'
 import type { Boy, BoyFormData } from '@/lib/types'
 import { useLanguage } from '@/lib/i18n/context'
+import { cn } from '@/lib/utils'
 
 interface BoyFormProps {
   boy?: Boy
@@ -22,12 +23,16 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
   const [isPending, startTransition] = useTransition()
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(boy?.profile_image_url ?? null)
+  const [kgLevel, setKgLevel] = useState<'kg1' | 'kg2'>(boy?.kg_level ?? 'kg1')
   const [errors, setErrors] = useState<Partial<Record<keyof BoyFormData, string>>>({})
 
   const validate = (data: BoyFormData): boolean => {
     const newErrors: typeof errors = {}
     if (!data.full_name.trim()) {
       newErrors.full_name = language === 'ar' ? 'الاسم الكامل مطلوب.' : 'Full name is required.'
+    }
+    if (!data.kg_level || !['kg1', 'kg2'].includes(data.kg_level)) {
+      newErrors.kg_level = language === 'ar' ? 'مرحلة الروضة (KG1 أو KG2) مطلوبة.' : 'KG level (KG1 or KG2) is required.'
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -38,6 +43,7 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
     const form = e.currentTarget
     const data: BoyFormData = {
       full_name: (form.elements.namedItem('full_name') as HTMLInputElement).value,
+      kg_level: kgLevel,
       address: (form.elements.namedItem('address') as HTMLInputElement).value,
       date_of_birth: (form.elements.namedItem('date_of_birth') as HTMLInputElement).value,
       phone_number: (form.elements.namedItem('phone_number') as HTMLInputElement).value,
@@ -139,6 +145,65 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
             leftIcon={<User className="w-4 h-4 text-muted-foreground" />}
             required
           />
+        </div>
+
+        {/* KG Level Selection */}
+        <div className="sm:col-span-2 space-y-2">
+          <label className="block text-sm font-medium text-foreground">
+            {t('kg_level_label')}
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              id="kg-level-kg1"
+              onClick={() => setKgLevel('kg1')}
+              className={cn(
+                'flex items-center justify-between p-3.5 rounded-xl border-2 text-sm font-semibold transition-all cursor-pointer',
+                kgLevel === 'kg1'
+                  ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 shadow-sm ring-1 ring-blue-500/20'
+                  : 'border-border bg-card text-muted-foreground hover:border-border/80 hover:bg-muted/50'
+              )}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
+                  kgLevel === 'kg1' ? 'border-blue-600' : 'border-muted-foreground/40'
+                )}>
+                  {kgLevel === 'kg1' && <span className="w-2 h-2 rounded-full bg-blue-600" />}
+                </span>
+                <span className="font-bold text-base">KG1</span>
+              </div>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium">
+                {language === 'ar' ? 'المرحلة الأولى' : 'Level 1'}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              id="kg-level-kg2"
+              onClick={() => setKgLevel('kg2')}
+              className={cn(
+                'flex items-center justify-between p-3.5 rounded-xl border-2 text-sm font-semibold transition-all cursor-pointer',
+                kgLevel === 'kg2'
+                  ? 'border-emerald-600 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 shadow-sm ring-1 ring-emerald-500/20'
+                  : 'border-border bg-card text-muted-foreground hover:border-border/80 hover:bg-muted/50'
+              )}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className={cn(
+                  'w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
+                  kgLevel === 'kg2' ? 'border-emerald-600' : 'border-muted-foreground/40'
+                )}>
+                  {kgLevel === 'kg2' && <span className="w-2 h-2 rounded-full bg-emerald-600" />}
+                </span>
+                <span className="font-bold text-base">KG2</span>
+              </div>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium">
+                {language === 'ar' ? 'المرحلة الثانية' : 'Level 2'}
+              </span>
+            </button>
+          </div>
+          {errors.kg_level && <p className="text-xs text-destructive">{errors.kg_level}</p>}
         </div>
 
         <Input

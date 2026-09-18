@@ -1,6 +1,7 @@
 // ─── Database Types (auto-matches the SQL schema) ─────────────────────────
 
 export type UserRole = 'admin' | 'user'
+export type KgLevel = 'kg1' | 'kg2'
 
 export interface Profile {
   id: string
@@ -17,6 +18,7 @@ export interface Boy {
   id: string
   full_name: string
   profile_image_url: string | null
+  kg_level: KgLevel
   address: string | null
   date_of_birth: string | null
   phone_number: string | null
@@ -47,6 +49,7 @@ export interface CheckIn {
 
 export interface BoyFormData {
   full_name: string
+  kg_level: KgLevel
   address: string
   date_of_birth: string
   phone_number: string
@@ -78,6 +81,8 @@ export interface ActionResult<T = void> {
 
 export interface DashboardStats {
   totalBoys: number
+  kg1Count: number
+  kg2Count: number
   totalCheckIns: number
   recentCheckIns: number        // last 7 days
   overdueCount: number          // no check-in in OVERDUE_DAYS
@@ -92,7 +97,9 @@ export type SortOrder = 'asc' | 'desc'
 
 export interface BoysFilter {
   search: string
+  kgLevel: 'all' | 'kg1' | 'kg2'
   sortField: SortField
   sortOrder: SortOrder
   overdueOnly: boolean
 }
+

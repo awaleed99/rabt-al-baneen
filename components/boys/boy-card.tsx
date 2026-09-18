@@ -36,6 +36,14 @@ export function BoyCard({ boy }: BoyCardProps) {
               </p>
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className={cn(
+                'inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold border',
+                boy.kg_level === 'kg2'
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                  : 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30'
+              )}>
+                {boy.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+              </span>
               {overdue ? (
                 <Badge variant="warning">
                   <AlertCircle className="w-3 h-3 me-1" />

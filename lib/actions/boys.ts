@@ -53,7 +53,12 @@ async function requireActiveUser() {
 
 // ─── Get all boys with last check-in ────────────────────────────────────────
 
-export async function getBoys(search = '', sortField = 'full_name', sortOrder: 'asc' | 'desc' = 'asc') {
+export async function getBoys(
+  search = '',
+  sortField = 'full_name',
+  sortOrder: 'asc' | 'desc' = 'asc',
+  kgLevel: 'all' | 'kg1' | 'kg2' = 'all'
+) {
   const { supabase } = await requireActiveUser()
 
   let query = supabase
@@ -66,6 +71,10 @@ export async function getBoys(search = '', sortField = 'full_name', sortOrder: '
 
   if (search.trim()) {
     query = query.ilike('full_name', `%${search.trim()}%`)
+  }
+
+  if (kgLevel && kgLevel !== 'all') {
+    query = query.eq('kg_level', kgLevel)
   }
 
   if (sortField === 'full_name') {
@@ -148,6 +157,7 @@ export async function createBoy(formData: BoyFormData): Promise<ActionResult<{ i
       .from('boys')
       .insert({
         full_name: formData.full_name.trim(),
+        kg_level: formData.kg_level || 'kg1',
         address: formData.address?.trim() || null,
         date_of_birth: formData.date_of_birth || null,
         phone_number: formData.phone_number?.trim() || null,
@@ -177,6 +187,7 @@ export async function updateBoy(id: string, formData: BoyFormData): Promise<Acti
       .from('boys')
       .update({
         full_name: formData.full_name.trim(),
+        kg_level: formData.kg_level || 'kg1',
         address: formData.address?.trim() || null,
         date_of_birth: formData.date_of_birth || null,
         phone_number: formData.phone_number?.trim() || null,
@@ -267,6 +278,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const [
     { count: totalBoys },
+    { count: kg1Count },
+    { count: kg2Count },
     { count: totalCheckIns },
     { count: recentCheckIns },
     { data: boysWithLastCheckIn },
@@ -274,6 +287,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { data: recentCheckInsList },
   ] = await Promise.all([
     supabase.from('boys').select('*', { count: 'exact', head: true }),
+    supabase.from('boys').select('*', { count: 'exact', head: true }).eq('kg_level', 'kg1'),
+    supabase.from('boys').select('*', { count: 'exact', head: true }).eq('kg_level', 'kg2'),
     supabase.from('check_ins').select('*', { count: 'exact', head: true }),
     supabase.from('check_ins').select('*', { count: 'exact', head: true }).gte('visit_date', sevenDaysAgo),
     supabase.from('boys').select('id, check_ins(visit_date)'),
@@ -294,6 +309,8 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   return {
     totalBoys: totalBoys ?? 0,
+    kg1Count: kg1Count ?? 0,
+    kg2Count: kg2Count ?? 0,
     totalCheckIns: totalCheckIns ?? 0,
     recentCheckIns: recentCheckIns ?? 0,
     overdueCount,

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MapPin, Calendar, Phone, FileText, Edit, Trash2, Plus, CalendarCheck,
-  ArrowLeft, ArrowRight, Clock, User2
+  ArrowLeft, ArrowRight, Clock, User2, GraduationCap
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { Badge } from '@/components/ui/badge-custom'
@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { deleteBoy } from '@/lib/actions/boys'
 import { getCheckIns } from '@/lib/actions/check-ins'
 import {
-  formatDate, formatRelative, calculateAge, isOverdue, getOverdueDays
+  formatDate, formatRelative, calculateAge, isOverdue, getOverdueDays, cn
 } from '@/lib/utils'
 import type { Boy, CheckIn, Profile } from '@/lib/types'
 import Link from 'next/link'
@@ -97,6 +97,16 @@ export function BoyProfileClient({ boy: initialBoy, profile, initialCheckIns, ch
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{boy.full_name}</h1>
+                <span className={cn(
+                  'inline-flex items-center px-3 py-1 rounded-lg text-xs sm:text-sm font-bold border shadow-xs',
+                  boy.kg_level === 'kg2'
+                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                    : 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/30'
+                )}>
+                  {boy.kg_level === 'kg2'
+                    ? (language === 'ar' ? 'KG2 — المرحلة الثانية' : 'KG2 — Level 2')
+                    : (language === 'ar' ? 'KG1 — المرحلة الأولى' : 'KG1 — Level 1')}
+                </span>
                 {overdue ? (
                   <Badge variant="warning">{t('badge_overdue')}</Badge>
                 ) : (
@@ -170,6 +180,17 @@ export function BoyProfileClient({ boy: initialBoy, profile, initialCheckIns, ch
 
           {/* Detail fields */}
           <div className="grid sm:grid-cols-2 gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{t('kg_level')}</p>
+                <p className="text-sm font-bold text-foreground">
+                  {boy.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+                </p>
+              </div>
+            </div>
             {boy.date_of_birth && (
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
