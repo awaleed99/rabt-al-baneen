@@ -126,15 +126,23 @@ export function Sidebar({ profile }: SidebarProps) {
         <SidebarContent />
       </aside>
 
-      {/* Mobile hamburger button */}
-      <button
-        type="button"
-        onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 start-4 z-40 p-2 rounded-xl bg-card border border-border shadow-md"
-        aria-label="Open menu"
-      >
-        <Menu className="w-5 h-5 text-foreground" />
-      </button>
+      {/* Mobile sticky top bar */}
+      <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-card/95 backdrop-blur-md border-b border-border shadow-xs w-full">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-teal-500 to-primary flex items-center justify-center shadow-xs">
+            <span className="text-white font-bold text-sm">ر</span>
+          </div>
+          <span className="font-bold text-sm text-foreground">{t('app_name')}</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-xl border border-border bg-background hover:bg-muted transition-colors"
+          aria-label="Open menu"
+        >
+          <Menu className="w-5 h-5 text-foreground" />
+        </button>
+      </header>
 
       {/* Mobile drawer overlay */}
       {mobileOpen && (
