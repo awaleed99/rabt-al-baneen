@@ -9,17 +9,36 @@ export interface ExportPdfOptions {
 }
 
 /**
+ * Detects if the current user agent is mobile / tablet
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false
+  const ua = navigator.userAgent || navigator.vendor || (window as any).opera || ''
+  const isMobileUA = /android|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile/i.test(ua)
+  const isTouchScreen = 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)
+  const isSmallScreen = window.innerWidth <= 800
+  return isMobileUA || (Boolean(isTouchScreen) && isSmallScreen)
+}
+
+/**
  * Native Browser Print / Vector PDF Export
  * Opens a dedicated official registry window and launches the browser's native print engine.
  * Generates 100% crisp vector PDF with perfect Arabic typography, zero letter collision, and selectable text.
+ * Returns true if window was opened successfully, false if on mobile or blocked by popup blocker.
  */
 export function printBoysRegistryWindow({
   boys,
   kgLevel = 'all',
   categoryLabel,
   academicYear = '2025-2026 م',
-}: ExportPdfOptions): void {
-  if (typeof window === 'undefined') return
+}: ExportPdfOptions): boolean {
+  if (typeof window === 'undefined') return false
+
+  // On mobile devices, window.open('', '_blank') creates an unrenderable about:blank white tab.
+  // We return false to let the caller present the in-page mobile printable modal.
+  if (isMobileDevice()) {
+    return false
+  }
 
   const resolvedCategory =
     categoryLabel ||
@@ -32,8 +51,7 @@ export function printBoysRegistryWindow({
 
   const printWindow = window.open('', '_blank')
   if (!printWindow) {
-    alert('يرجى السماح بالنوافذ المنبثقة (Popups) لمعاينة وطباعة السجل')
-    return
+    return false
   }
 
   printWindow.document.write(`
@@ -288,17 +306,27 @@ export function printBoysRegistryWindow({
       </div>
 
       <script>
-        // Trigger print automatically on desktop after fonts load
-        window.addEventListener('load', function() {
+        function triggerPrint() {
           setTimeout(function() {
-            window.print();
-          }, 400);
-        });
+            try {
+              window.focus();
+              window.print();
+            } catch (e) {
+              console.error('Print trigger error', e);
+            }
+          }, 350);
+        }
+        if (document.readyState === 'complete') {
+          triggerPrint();
+        } else {
+          window.addEventListener('load', triggerPrint);
+        }
       </script>
     </body>
     </html>
   `)
   printWindow.document.close()
+  return true
 }
 
 /**
@@ -309,7 +337,7 @@ export async function exportBoysToPdf({
   kgLevel = 'all',
   categoryLabel,
   academicYear = '2025-2026 م',
-}: ExportPdfOptions): Promise<void> {
+}: ExportPdfOptions): Promise<boolean> {
   // Use native vector print for guaranteed 100% sharp Arabic output with zero letter collision
-  printBoysRegistryWindow({ boys, kgLevel, categoryLabel, academicYear })
+  return printBoysRegistryWindow({ boys, kgLevel, categoryLabel, academicYear })
 }

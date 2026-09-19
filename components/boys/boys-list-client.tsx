@@ -16,7 +16,8 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/lib/i18n/context'
 import { exportBoysToExcel } from '@/lib/export/excel'
-import { exportBoysToPdf } from '@/lib/export/pdf'
+import { exportBoysToPdf, isMobileDevice } from '@/lib/export/pdf'
+import { PrintRegistryModal } from '@/components/boys/print-registry-modal'
 import { toast } from 'sonner'
 
 interface BoysListClientProps {
@@ -41,6 +42,7 @@ export function BoysListClient({ initialBoys, isAdmin }: BoysListClientProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [isExportingExcel, setIsExportingExcel] = useState(false)
   const [isExportingPdf, setIsExportingPdf] = useState(false)
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false)
 
   const overdueDays = getOverdueDays()
 
@@ -138,14 +140,24 @@ export function BoysListClient({ initialBoys, isAdmin }: BoysListClientProps) {
       return
     }
 
+    const isMobile = isMobileDevice()
+
+    if (isMobile) {
+      // On mobile: Open in-page registry modal directly to avoid about:blank white tab and popup blocking
+      setIsPrintModalOpen(true)
+      return
+    }
+
+    // On desktop: Use the dedicated native print window
     setIsExportingPdf(true)
     toast.info(
       language === 'ar'
-        ? 'جاري تجهيز وتوليد سجل الـ PDF الرسمي...'
-        : 'Generating official PDF registry...'
+        ? 'جاري تجهيز سجل الـ PDF الرسمي...'
+        : 'Preparing official PDF registry...'
     )
+
     try {
-      await exportBoysToPdf({
+      const opened = await exportBoysToPdf({
         boys: filteredBoys,
         kgLevel,
         categoryLabel:
@@ -157,17 +169,20 @@ export function BoysListClient({ initialBoys, isAdmin }: BoysListClientProps) {
             ? 'جميع الأولاد (الكل)'
             : 'All Boys',
       })
-      toast.success(
-        language === 'ar'
-          ? 'تم تنزيل سجل الـ PDF بنجاح!'
-          : 'PDF registry downloaded successfully!'
-      )
+
+      if (!opened) {
+        // Fallback to in-page modal if popup was suppressed by browser
+        setIsPrintModalOpen(true)
+      } else {
+        toast.success(
+          language === 'ar'
+            ? 'تم فتح نافذة الطباعة وسجل الـ PDF بنجاح!'
+            : 'Official PDF registry window opened!'
+        )
+      }
     } catch (e: any) {
-      toast.error(
-        language === 'ar'
-          ? `فشل تصدير الـ PDF: ${e.message}`
-          : `PDF export failed: ${e.message}`
-      )
+      // Fallback to in-page modal on any error
+      setIsPrintModalOpen(true)
     } finally {
       setIsExportingPdf(false)
     }
@@ -383,6 +398,23 @@ export function BoysListClient({ initialBoys, isAdmin }: BoysListClientProps) {
           ))}
         </div>
       )}
+
+      {/* Mobile-friendly and cross-platform Printable Registry Modal */}
+      <PrintRegistryModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        boys={filteredBoys}
+        kgLevel={kgLevel}
+        categoryLabel={
+          kgLevel === 'kg1'
+            ? 'KG1'
+            : kgLevel === 'kg2'
+            ? 'KG2'
+            : language === 'ar'
+            ? 'جميع الأولاد (الكل)'
+            : 'All Boys'
+        }
+      />
     </div>
   )
 }
