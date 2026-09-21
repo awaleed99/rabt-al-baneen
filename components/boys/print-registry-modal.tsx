@@ -85,7 +85,7 @@ export function PrintRegistryModal({
               </span>
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              كنيسة مارمرقس — أسرة الأمير تادرس ({boys.length} ولد مقيد)
+              كنيسة مارمرقس — فصل الأمير تادرس ({boys.length} ولد مقيد)
             </p>
           </div>
         </div>
@@ -142,10 +142,10 @@ export function PrintRegistryModal({
             <tr>
               <td className="w-1/3 text-right align-top border-none p-0 bg-transparent">
                 <h3 className="text-sm font-bold text-blue-900 mb-1">
-                  كنيسة مارمرقس — أسرة الأمير تادرس
+                  كنيسة مارمرقس — فصل الأمير تادرس
                 </h3>
                 <p className="text-xs text-slate-600">
-                  أسرة الأمير تادرس — سجل المتابعة والرعاية
+                  فصل الأمير تادرس — سجل المتابعة والرعاية
                 </p>
               </td>
               <td className="w-1/3 text-center align-top border-none p-0 bg-transparent">
@@ -281,7 +281,7 @@ export function PrintRegistryModal({
           <tbody>
             <tr>
               <td className="w-1/3 text-right border-none p-0 bg-transparent">
-                منظومة أسرة الأمير تادرس — سجل رسمي معتمد
+                منظومة فصل الأمير تادرس — سجل رسمي معتمد
               </td>
               <td className="w-1/3 text-center border-none p-0 bg-transparent">
                 توقيع خادم المرحلة: .......................................

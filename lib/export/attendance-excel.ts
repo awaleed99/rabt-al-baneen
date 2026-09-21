@@ -7,7 +7,7 @@ export async function exportMonthlyAttendanceExcel(
   academicYear = '2025-2026 م'
 ): Promise<void> {
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'أسرة الأمير تادرس — كنيسة مارمرقس'
+  workbook.creator = 'فصل الأمير تادرس — كنيسة مارمرقس'
   workbook.created = new Date()
 
   const sheetName = `حضور ${data.monthNameAr} ${data.year}`
@@ -42,7 +42,7 @@ export async function exportMonthlyAttendanceExcel(
   const totalColsCount = baseCols.length
 
   // Row 1: Main Title
-  const row1 = ws.addRow(['كشف حضور الجمعة الشهري — أسرة الأمير تادرس'])
+  const row1 = ws.addRow(['كشف حضور الجمعة الشهري — فصل الأمير تادرس'])
   ws.mergeCells(1, 1, 1, totalColsCount)
   row1.height = 36
   const cellA1 = ws.getCell('A1')

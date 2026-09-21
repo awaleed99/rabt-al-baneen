@@ -59,7 +59,7 @@ export function printBoysRegistryWindow({
     <html dir="rtl" lang="ar">
     <head>
       <meta charset="utf-8">
-      <title>سجل الأولاد — أسرة الأمير تادرس</title>
+      <title>سجل الأولاد — فصل الأمير تادرس</title>
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
       <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -229,8 +229,8 @@ export function printBoysRegistryWindow({
         <table style="width: 100%; border: none; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 8px;">
           <tr>
             <td style="width: 32%; border: none; text-align: right; vertical-align: top; background: transparent;">
-              <h3 style="font-size: 14px; font-weight: 700; color: #1e3a8a; margin-bottom: 3px;">كنيسة مارمرقس — أسرة الأمير تادرس</h3>
-              <p style="font-size: 12px; color: #475569;">أسرة الأمير تادرس — سجل المتابعة والرعاية</p>
+              <h3 style="font-size: 14px; font-weight: 700; color: #1e3a8a; margin-bottom: 3px;">كنيسة مارمرقس — فصل الأمير تادرس</h3>
+              <p style="font-size: 12px; color: #475569;">فصل الأمير تادرس — سجل المتابعة والرعاية</p>
             </td>
             <td style="width: 36%; border: none; text-align: center; vertical-align: top; background: transparent;">
               <h1 style="font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 3px;">سجل الأولاد</h1>
@@ -302,7 +302,7 @@ export function printBoysRegistryWindow({
         <!-- Footer Stamp -->
         <table style="width: 100%; border: none; border-top: 1px solid #cbd5e1; margin-top: 24px; padding-top: 14px; font-size: 11px; color: #64748b;">
           <tr>
-            <td style="width: 33%; border: none; text-align: right; background: transparent;">منظومة أسرة الأمير تادرس — سجل رسمي معتمد</td>
+            <td style="width: 33%; border: none; text-align: right; background: transparent;">منظومة فصل الأمير تادرس — سجل رسمي معتمد</td>
             <td style="width: 34%; border: none; text-align: center; background: transparent;">توقيع خادم المرحلة: .......................................</td>
             <td style="width: 33%; border: none; text-align: left; background: transparent;">ختم وتوقيع أمين الخدمة: .......................................</td>
           </tr>

@@ -3,7 +3,7 @@ export type Language = 'ar' | 'en'
 export const translations = {
   ar: {
     // App & Brand
-    app_name: 'أسرة الأمير تادرس',
+    app_name: 'فصل الأمير تادرس',
     app_tagline: 'منظومة متابعة ورعاية البنين',
     app_description: 'نظام آمن وشامل لإدارة ومتابعة سجلات البنين والزيارات الدورية والتواصل.',
 
@@ -89,7 +89,7 @@ export const translations = {
     filter_kg2: 'KG2',
     export_excel: 'تصدير إكسيل (Excel)',
     export_pdf: 'تصدير PDF (طباعة)',
-    export_title: 'سجل البنين — أسرة الأمير تادرس',
+    export_title: 'سجل البنين — فصل الأمير تادرس',
     export_subtitle: 'العام الدراسي 2025-2026',
     export_date: 'تاريخ التصدير',
     export_category: 'الفئة',
@@ -209,7 +209,7 @@ export const translations = {
   },
   en: {
     // App & Brand
-    app_name: 'Osrat El-Ameer Tadros',
+    app_name: 'Fasl El-Ameer Tadros',
     app_tagline: 'Boys Management & Tracking System',
     app_description: 'A secure platform for managing and tracking boys — profiles, visits, and history.',
 
@@ -295,7 +295,7 @@ export const translations = {
     filter_kg2: 'KG2',
     export_excel: 'Export Excel',
     export_pdf: 'Export PDF',
-    export_title: 'Boys Registry — Osrat El-Ameer Tadros',
+    export_title: 'Boys Registry — Fasl El-Ameer Tadros',
     export_subtitle: 'Academic Year 2025-2026',
     export_date: 'Export Date',
     export_category: 'Category',

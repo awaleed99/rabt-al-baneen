@@ -19,10 +19,10 @@ const cairo = Cairo({
 
 export const metadata: Metadata = {
   title: {
-    default: 'أسرة الأمير تادرس | Osrat El-Ameer Tadros',
-    template: '%s | أسرة الأمير تادرس',
+    default: 'فصل الأمير تادرس | Fasl El-Ameer Tadros',
+    template: '%s | فصل الأمير تادرس',
   },
-  description: 'منظومة متابعة ورعاية البنين — أسرة الأمير تادرس',
+  description: 'منظومة متابعة ورعاية البنين — فصل الأمير تادرس',
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
