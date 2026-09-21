@@ -7,7 +7,7 @@ import type { Profile } from '@/lib/types'
 
 export const metadata: Metadata = {
   title: 'كشف حضور الجمعة شهرياً | Friday Attendance',
-  description: 'تسجيل ومتابعة حضور أولاد أسرة الأبرار حضانة كل يوم جمعة شهرياً',
+  description: 'تسجيل ومتابعة حضور أولاد أسرة الأمير تادرس كل يوم جمعة شهرياً',
 }
 
 async function AttendancePageContent() {

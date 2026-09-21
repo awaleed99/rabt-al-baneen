@@ -105,7 +105,7 @@ export function BoyProfileClient({ boy: initialBoy, profile, initialCheckIns, ch
                 )}
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                نتمنى له عاماً مباركاً سعيداً ممتلئاً بالنعمة والبركة في حضن الكنيسة وأسرة الأبرار ❤️
+                نتمنى له عاماً مباركاً سعيداً ممتلئاً بالنعمة والبركة في حضن الكنيسة وأسرة الأمير تادرس ❤️
               </p>
             </div>
           </div>

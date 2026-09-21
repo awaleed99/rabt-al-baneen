@@ -17,8 +17,8 @@ export async function exportBoysToExcel({
   academicYear = '2025-2026 م',
 }: ExportExcelOptions): Promise<void> {
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'رابطة البنين — Rabt Al-Baneen'
-  workbook.lastModifiedBy = 'رابطة البنين'
+  workbook.creator = 'أسرة الأمير تادرس — Osrat El-Ameer Tadros'
+  workbook.lastModifiedBy = 'أسرة الأمير تادرس'
   workbook.created = new Date()
   workbook.modified = new Date()
 
@@ -58,7 +58,7 @@ export async function exportBoysToExcel({
     ]
 
     // Row 1: Title Header
-    const row1 = ws.addRow(['سجل الأولاد — رابطة البنين'])
+    const row1 = ws.addRow(['سجل الأولاد — أسرة الأمير تادرس'])
     ws.mergeCells('A1:J1')
     row1.height = 36
     const cellA1 = ws.getCell('A1')

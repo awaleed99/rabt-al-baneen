@@ -19,10 +19,10 @@ const cairo = Cairo({
 
 export const metadata: Metadata = {
   title: {
-    default: 'رابط البنين | Rabt Al-Baneen',
-    template: '%s | رابط البنين',
+    default: 'أسرة الأمير تادرس | Osrat El-Ameer Tadros',
+    template: '%s | أسرة الأمير تادرس',
   },
-  description: 'منظومة متابعة ورعاية البنين — ملفات شخصية، سجل الزيارات، والمتابعة الدورية.',
+  description: 'منظومة متابعة ورعاية البنين — أسرة الأمير تادرس',
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },

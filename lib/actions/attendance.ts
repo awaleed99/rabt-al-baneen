@@ -80,16 +80,18 @@ export async function getMonthlyAttendance(
         }
         attendanceMap[rec.boy_id][rec.date] = rec.status as AttendanceStatus
       }
-    } else if (error && error.message.includes('attendance')) {
+    } else if (error && (error.code === 'PGRST205' || error.message.includes('attendance'))) {
       // If table doesn't exist yet, fallback to check_ins metadata
-      const startDate = `${year}-${String(month).padStart(2, '0')}-01T00:00:00Z`
-      const endDate = `${year}-${String(month).padStart(2, '0')}-31T23:59:59Z`
+      const daysInMonth = new Date(year, month, 0).getDate()
+      const startDate = `${year}-${String(month).padStart(2, '0')}-01T00:00:00.000Z`
+      const endDate = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}T23:59:59.999Z`
 
       const { data: fallbackRecords } = await supabase
         .from('check_ins')
-        .select('boy_id, visit_date, notes')
+        .select('boy_id, visit_date, notes, created_at')
         .gte('visit_date', startDate)
         .lte('visit_date', endDate)
+        .order('created_at', { ascending: true })
 
       for (const rec of fallbackRecords || []) {
         if (rec.notes && rec.notes.includes('[ATTENDANCE:')) {
@@ -197,7 +199,7 @@ export async function toggleAttendance(
   notes?: string
 ): Promise<ActionResult> {
   try {
-    const { supabase, user } = await requireActiveUser()
+    const { supabase, user, profile } = await requireActiveUser()
 
     // 1. Try upserting to public.attendance table
     const { error } = await supabase.from('attendance').upsert(
@@ -206,20 +208,42 @@ export async function toggleAttendance(
         date,
         status,
         notes: notes || null,
-        marked_by: user.id,
+        marked_by: profile ? user.id : null,
       },
       { onConflict: 'boy_id,date' }
     )
 
     // 2. If table doesn't exist yet, fallback to check_ins
-    if (error && error.message.includes('attendance')) {
-      const attendanceNote = `[ATTENDANCE:${date}:${status}]${notes ? ' ' + notes : ''}`
-      await supabase.from('check_ins').insert({
-        boy_id: boyId,
-        visit_date: `${date}T10:00:00Z`,
-        notes: attendanceNote,
-        created_by: user.id,
-      })
+    if (error && (error.code === 'PGRST205' || error.message.includes('attendance'))) {
+      const attendanceTag = `[ATTENDANCE:${date}:`
+
+      // Delete any previous attendance record for this boy and date
+      const { data: oldRecords } = await supabase
+        .from('check_ins')
+        .select('id')
+        .eq('boy_id', boyId)
+        .ilike('notes', `%${attendanceTag}%`)
+
+      if (oldRecords && oldRecords.length > 0) {
+        await supabase
+          .from('check_ins')
+          .delete()
+          .in(
+            'id',
+            oldRecords.map((r) => r.id)
+          )
+      }
+
+      // If marking present, insert the new record
+      if (status === 'present') {
+        const attendanceNote = `[ATTENDANCE:${date}:present]${notes ? ' ' + notes : ''}`
+        await supabase.from('check_ins').insert({
+          boy_id: boyId,
+          visit_date: `${date}T10:00:00Z`,
+          notes: attendanceNote,
+          created_by: profile ? user.id : null,
+        })
+      }
     } else if (error) {
       return { success: false, error: error.message }
     }
@@ -240,7 +264,7 @@ export async function bulkSetFridayAttendance(
   boyIds: string[]
 ): Promise<ActionResult> {
   try {
-    const { supabase, user } = await requireActiveUser()
+    const { supabase, user, profile } = await requireActiveUser()
 
     if (!boyIds || boyIds.length === 0) {
       return { success: true }
@@ -250,22 +274,43 @@ export async function bulkSetFridayAttendance(
       boy_id: id,
       date,
       status,
-      marked_by: user.id,
+      marked_by: profile ? user.id : null,
     }))
 
     const { error } = await supabase
       .from('attendance')
       .upsert(records, { onConflict: 'boy_id,date' })
 
-    if (error && error.message.includes('attendance')) {
-      // Fallback
-      const inserts = boyIds.map((id) => ({
-        boy_id: id,
-        visit_date: `${date}T10:00:00Z`,
-        notes: `[ATTENDANCE:${date}:${status}]`,
-        created_by: user.id,
-      }))
-      await supabase.from('check_ins').insert(inserts)
+    if (error && (error.code === 'PGRST205' || error.message.includes('attendance'))) {
+      const attendanceTag = `[ATTENDANCE:${date}:`
+
+      // Delete previous records for these boys on this date
+      const { data: oldRecords } = await supabase
+        .from('check_ins')
+        .select('id')
+        .in('boy_id', boyIds)
+        .ilike('notes', `%${attendanceTag}%`)
+
+      if (oldRecords && oldRecords.length > 0) {
+        await supabase
+          .from('check_ins')
+          .delete()
+          .in(
+            'id',
+            oldRecords.map((r) => r.id)
+          )
+      }
+
+      // If marking present, insert for all boys
+      if (status === 'present') {
+        const inserts = boyIds.map((id) => ({
+          boy_id: id,
+          visit_date: `${date}T10:00:00Z`,
+          notes: `[ATTENDANCE:${date}:present]`,
+          created_by: profile ? user.id : null,
+        }))
+        await supabase.from('check_ins').insert(inserts)
+      }
     } else if (error) {
       return { success: false, error: error.message }
     }

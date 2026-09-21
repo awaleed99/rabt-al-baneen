@@ -250,7 +250,7 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
             <span>كشف حضور الجمعة شهرياً</span>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            كنيسة مارمرقس — أسرة الأبرار حضانة (تسجيل ومتابعة حضور الأولاد كل جمعة)
+            كنيسة مارمرقس — أسرة الأمير تادرس (تسجيل ومتابعة حضور الأولاد كل جمعة)
           </p>
         </div>
 

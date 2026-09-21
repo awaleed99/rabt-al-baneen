@@ -45,7 +45,7 @@ export function Sidebar({ profile }: SidebarProps) {
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-5 border-b border-white/10">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-primary flex items-center justify-center shadow-sm">
-          <span className="text-white font-bold text-base">ر</span>
+          <span className="text-white font-bold text-base">ت</span>
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-white truncate">{t('app_name')}</p>

@@ -110,7 +110,7 @@ export function DashboardClient({ stats, profile }: DashboardClientProps) {
                   </span>
                 </h2>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                  اليوم يوم مميز في أسرة الأبرار! بادر بإرسال التهنئة ومشاركة الفرحة مع أولياء الأمور 🎈
+                  اليوم يوم مميز في أسرة الأمير تادرس! بادر بإرسال التهنئة ومشاركة الفرحة مع أولياء الأمور 🎈
                 </p>
               </div>
             </div>

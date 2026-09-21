@@ -1,6 +1,6 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { MapPin, Calendar, Clock, CheckCircle2, AlertCircle, Phone, MessageCircle } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { Badge } from '@/components/ui/badge-custom'
@@ -14,6 +14,7 @@ interface BoyCardProps {
 }
 
 export function BoyCard({ boy }: BoyCardProps) {
+  const router = useRouter()
   const { t, language } = useLanguage()
   const overdue = isOverdue(boy.last_check_in, getOverdueDays())
   const age = calculateAge(boy.date_of_birth)
@@ -24,9 +25,17 @@ export function BoyCard({ boy }: BoyCardProps) {
   const motherPhone = boy.mother_phone
 
   return (
-    <Link href={`/boys/${boy.id}`}>
-      <div
-        className={cn(
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => router.push(`/boys/${boy.id}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          router.push(`/boys/${boy.id}`)
+        }
+      }}
+      className={cn(
           'group bg-card border border-border rounded-xl p-5 card-hover cursor-pointer animate-fade-in transition-all relative overflow-hidden',
           overdue && 'border-amber-400/50 dark:border-amber-500/40 shadow-xs',
           isBirthday && 'border-amber-400 ring-2 ring-amber-400/30 bg-gradient-to-br from-amber-500/5 via-card to-pink-500/5 shadow-md shadow-amber-500/10'
@@ -185,6 +194,5 @@ export function BoyCard({ boy }: BoyCardProps) {
           </div>
         )}
       </div>
-    </Link>
   )
 }
