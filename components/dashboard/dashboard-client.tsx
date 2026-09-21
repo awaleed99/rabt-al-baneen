@@ -1,9 +1,10 @@
 'use client'
 
-import { Users, CalendarCheck, AlertCircle, TrendingUp, Clock, Plus, GraduationCap, Sparkles } from 'lucide-react'
+import { Users, CalendarCheck, AlertCircle, TrendingUp, Clock, Plus, GraduationCap, Sparkles, MessageCircle } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { Button } from '@/components/ui/button-custom'
 import { formatRelative, formatDateTime, getOverdueDays } from '@/lib/utils'
+import { getTurningAge, getWhatsAppGreetingUrl } from '@/lib/birthday'
 import { useLanguage } from '@/lib/i18n/context'
 import Link from 'next/link'
 import type { DashboardStats, Profile } from '@/lib/types'
@@ -94,6 +95,82 @@ export function DashboardClient({ stats, profile }: DashboardClientProps) {
           </Link>
         )}
       </div>
+
+      {/* ─── Birthday Celebrations Banner ─────────────────────── */}
+      {stats.todayBirthdays && stats.todayBirthdays.length > 0 && (
+        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-purple-500/20 border-2 border-amber-400/50 shadow-lg shadow-amber-500/10 space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl sm:text-4xl animate-bounce select-none">🎂</span>
+              <div>
+                <h2 className="text-lg sm:text-xl font-extrabold text-foreground flex items-center gap-2">
+                  <span>أعياد ميلاد اليوم المباركة! 🎉</span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-800 dark:text-amber-200 font-bold">
+                    {stats.todayBirthdays.length} {language === 'ar' ? 'أولاد يحتفلون اليوم' : 'boys celebrating today'}
+                  </span>
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                  اليوم يوم مميز في أسرة الأبرار! بادر بإرسال التهنئة ومشاركة الفرحة مع أولياء الأمور 🎈
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 pt-1">
+            {stats.todayBirthdays.map((boy) => {
+              const turningAge = getTurningAge(boy.date_of_birth)
+              const fatherPhone = boy.father_phone || boy.phone_number
+              const motherPhone = boy.mother_phone
+              return (
+                <div
+                  key={boy.id}
+                  className="bg-card/90 border border-amber-300/50 dark:border-amber-500/30 rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-xs hover:shadow-md transition-shadow"
+                >
+                  <Link href={`/boys/${boy.id}`} className="flex items-center gap-3 min-w-0 flex-1 hover:opacity-80 transition-opacity">
+                    <Avatar
+                      name={boy.full_name}
+                      imageUrl={boy.profile_image_url}
+                      size="md"
+                      hasBirthdayHat={true}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-sm text-foreground truncate">{boy.full_name}</p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400 font-semibold mt-0.5">
+                        {turningAge ? `أتم اليوم ${turningAge} سنوات 🎂` : 'اليوم عيد ميلاده 🎉'}
+                      </p>
+                    </div>
+                  </Link>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {fatherPhone && (
+                      <a
+                        href={getWhatsAppGreetingUrl(fatherPhone, boy.full_name, 'father') || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors"
+                        title="تهنئة الأب عبر واتساب 👨"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    )}
+                    {motherPhone && (
+                      <a
+                        href={getWhatsAppGreetingUrl(motherPhone, boy.full_name, 'mother') || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-lg bg-emerald-600/10 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-colors"
+                        title="تهنئة الأم عبر واتساب 👩"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

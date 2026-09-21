@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   MapPin, Calendar, Phone, FileText, Edit, Trash2, Plus, CalendarCheck,
-  ArrowLeft, ArrowRight, Clock, User2, GraduationCap
+  ArrowLeft, ArrowRight, Clock, User2, GraduationCap, MessageCircle
 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { Badge } from '@/components/ui/badge-custom'
@@ -18,6 +18,7 @@ import { getCheckIns } from '@/lib/actions/check-ins'
 import {
   formatDate, formatRelative, calculateAge, isOverdue, getOverdueDays, cn
 } from '@/lib/utils'
+import { isTodayBirthday, getTurningAge, getWhatsAppGreetingUrl, cleanPhoneNumber } from '@/lib/birthday'
 import type { Boy, CheckIn, Profile } from '@/lib/types'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -47,6 +48,10 @@ export function BoyProfileClient({ boy: initialBoy, profile, initialCheckIns, ch
   const overdueDays = getOverdueDays()
   const overdue = isOverdue(boy.last_check_in, overdueDays)
   const age = calculateAge(boy.date_of_birth)
+  const isBirthday = isTodayBirthday(boy.date_of_birth)
+  const turningAge = getTurningAge(boy.date_of_birth)
+  const fatherPhone = boy.father_phone || boy.phone_number
+  const motherPhone = boy.mother_phone
 
   // Realtime subscription
   useEffect(() => {
@@ -85,6 +90,52 @@ export function BoyProfileClient({ boy: initialBoy, profile, initialCheckIns, ch
         <span>{language === 'ar' ? 'الرجوع إلى سجل البنين' : 'Back to Boys'}</span>
       </Link>
 
+      {/* Birthday Celebration Hero Banner */}
+      {isBirthday && (
+        <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/20 via-pink-500/15 to-purple-500/20 border-2 border-amber-400/60 shadow-lg shadow-amber-500/10 flex flex-col sm:flex-row items-center justify-between gap-4 animate-fade-in">
+          <div className="flex items-center gap-4 text-center sm:text-right">
+            <span className="text-4xl sm:text-5xl animate-bounce shrink-0 select-none">🎂</span>
+            <div>
+              <h2 className="text-xl font-extrabold text-foreground flex items-center gap-2 justify-center sm:justify-start flex-wrap">
+                <span>🎉 اليوم عيد ميلاد {boy.full_name}!</span>
+                {turningAge && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-700 dark:text-amber-300 font-bold">
+                    أتم اليوم {turningAge} سنوات 🎈
+                  </span>
+                )}
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                نتمنى له عاماً مباركاً سعيداً ممتلئاً بالنعمة والبركة في حضن الكنيسة وأسرة الأبرار ❤️
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5 flex-wrap justify-center shrink-0">
+            {fatherPhone && (
+              <a
+                href={getWhatsAppGreetingUrl(fatherPhone, boy.full_name, 'father') || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>تهنئة الأب واتساب 👨</span>
+              </a>
+            )}
+            {motherPhone && (
+              <a
+                href={getWhatsAppGreetingUrl(motherPhone, boy.full_name, 'mother') || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all hover:scale-105"
+              >
+                <MessageCircle className="w-4 h-4" />
+                <span>تهنئة الأم واتساب 👩</span>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Profile Header */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
         {/* Cover gradient */}
@@ -92,8 +143,13 @@ export function BoyProfileClient({ boy: initialBoy, profile, initialCheckIns, ch
 
         <div className="px-6 pb-6">
           <div className="flex flex-wrap items-end gap-4 -mt-12 mb-6">
-            <Avatar name={boy.full_name} imageUrl={boy.profile_image_url} size="xl"
-              className="ring-4 ring-card shadow-xl" />
+            <Avatar
+              name={boy.full_name}
+              imageUrl={boy.profile_image_url}
+              size="xl"
+              className="ring-4 ring-card shadow-xl"
+              hasBirthdayHat={isBirthday}
+            />
             <div className="flex-1 min-w-0 pb-2">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{boy.full_name}</h1>
@@ -213,17 +269,84 @@ export function BoyProfileClient({ boy: initialBoy, profile, initialCheckIns, ch
                 </div>
               </div>
             )}
-            {boy.phone_number && (
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
+
+            {/* Parent Contacts Section */}
+            <div className="sm:col-span-2 grid sm:grid-cols-2 gap-3 pt-2">
+              {/* Father Card */}
+              <div className="p-3.5 rounded-xl border border-border bg-card/60 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 text-base">
+                    👨
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground font-medium">
+                      {language === 'ar' ? 'هاتف الأب / ولي الأمر' : "Father's Phone"}
+                    </p>
+                    <p className="text-sm font-bold text-foreground font-mono truncate" dir="ltr">
+                      {fatherPhone || '—'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">{t('phone')}</p>
-                  <p className="text-sm font-medium text-foreground" dir="ltr">{boy.phone_number}</p>
-                </div>
+                {fatherPhone && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <a
+                      href={`tel:${fatherPhone}`}
+                      className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      title={language === 'ar' ? 'اتصال هاتفياً' : 'Call'}
+                    >
+                      <Phone className="w-4 h-4" />
+                    </a>
+                    <a
+                      href={`https://wa.me/${cleanPhoneNumber(fatherPhone)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </a>
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Mother Card */}
+              <div className="p-3.5 rounded-xl border border-border bg-card/60 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-pink-500/10 flex items-center justify-center text-pink-600 dark:text-pink-400 shrink-0 text-base">
+                    👩
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground font-medium">
+                      {language === 'ar' ? 'هاتف الأم' : "Mother's Phone"}
+                    </p>
+                    <p className="text-sm font-bold text-foreground font-mono truncate" dir="ltr">
+                      {motherPhone || '—'}
+                    </p>
+                  </div>
+                </div>
+                {motherPhone && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <a
+                      href={`tel:${motherPhone}`}
+                      className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      title={language === 'ar' ? 'اتصال هاتفياً' : 'Call'}
+                    >
+                      <Phone className="w-4 h-4" />
+                    </a>
+                    <a
+                      href={`https://wa.me/${cleanPhoneNumber(motherPhone)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {boy.notes && (
               <div className="flex items-start gap-3 sm:col-span-2">
                 <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center shrink-0 mt-0.5">

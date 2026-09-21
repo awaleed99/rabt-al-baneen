@@ -253,7 +253,7 @@ export function printBoysRegistryWindow({
               <th style="width: 60px;">المرحلة</th>
               <th style="width: 220px; text-align: right; padding-right: 8px;">العنوان ومكان السكن</th>
               <th style="width: 85px;">تاريخ الميلاد</th>
-              <th style="width: 105px;">موبايل ولي الأمر</th>
+              <th style="width: 125px;">هواتف أولياء الأمور</th>
               <th style="width: 85px;">آخر زيارة</th>
               <th style="width: 55px;">الزيارات</th>
               <th style="text-align: right; padding-right: 8px;">ملاحظات</th>
@@ -263,6 +263,8 @@ export function printBoysRegistryWindow({
             ${boys
               .map((boy, idx) => {
                 const isKg2 = (boy.kg_level || '').toLowerCase() === 'kg2'
+                const fPhone = boy.father_phone || boy.phone_number
+                const mPhone = boy.mother_phone
                 return `
                 <tr>
                   <td style="text-align: center; font-weight: 700; color: #64748b;">${idx + 1}</td>
@@ -276,8 +278,10 @@ export function printBoysRegistryWindow({
                   <td style="text-align: center; font-family: monospace; font-size: 10px;">
                     ${boy.date_of_birth ? formatDate(boy.date_of_birth) : '—'}
                   </td>
-                  <td style="text-align: center; font-family: monospace; font-size: 10px; direction: ltr;">
-                    ${boy.phone_number || '—'}
+                  <td style="text-align: center; font-family: monospace; font-size: 9px; line-height: 1.4;">
+                    ${fPhone ? `<div><strong style="color: #1e3a8a;">الأب:</strong> <span dir="ltr">${fPhone}</span></div>` : ''}
+                    ${mPhone ? `<div><strong style="color: #be185d;">الأم:</strong> <span dir="ltr">${mPhone}</span></div>` : ''}
+                    ${!fPhone && !mPhone ? '—' : ''}
                   </td>
                   <td style="text-align: center; font-size: 10px;">
                     ${boy.last_check_in ? formatDate(boy.last_check_in) : '<span style="color: #94a3b8;">لم يُزَر</span>'}

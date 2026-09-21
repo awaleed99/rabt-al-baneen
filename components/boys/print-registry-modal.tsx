@@ -192,8 +192,8 @@ export function PrintRegistryModal({
               <th className="w-[85px] text-center p-2 border border-slate-700 font-bold text-white bg-slate-900">
                 تاريخ الميلاد
               </th>
-              <th className="w-[105px] text-center p-2 border border-slate-700 font-bold text-white bg-slate-900">
-                موبايل ولي الأمر
+              <th className="w-[125px] text-center p-2 border border-slate-700 font-bold text-white bg-slate-900">
+                هواتف أولياء الأمور
               </th>
               <th className="w-[85px] text-center p-2 border border-slate-700 font-bold text-white bg-slate-900">
                 آخر زيارة
@@ -210,6 +210,8 @@ export function PrintRegistryModal({
             {boys.map((boy, idx) => {
               const isKg2 = (boy.kg_level || '').toLowerCase() === 'kg2'
               const isEven = idx % 2 === 1
+              const fPhone = boy.father_phone || boy.phone_number
+              const mPhone = boy.mother_phone
               return (
                 <tr
                   key={boy.id || idx}
@@ -238,11 +240,20 @@ export function PrintRegistryModal({
                   <td className="text-center font-mono text-[10px] p-1.5 border border-slate-300 text-slate-700">
                     {boy.date_of_birth ? formatDate(boy.date_of_birth) : '—'}
                   </td>
-                  <td
-                    className="text-center font-mono text-[10px] p-1.5 border border-slate-300 text-slate-800"
-                    dir="ltr"
-                  >
-                    {boy.phone_number || '—'}
+                  <td className="text-center font-mono text-[10px] p-1.5 border border-slate-300 text-slate-800 leading-snug">
+                    {fPhone && (
+                      <div>
+                        <strong className="text-blue-900 text-[9px]">الأب: </strong>
+                        <span dir="ltr">{fPhone}</span>
+                      </div>
+                    )}
+                    {mPhone && (
+                      <div>
+                        <strong className="text-pink-700 text-[9px]">الأم: </strong>
+                        <span dir="ltr">{mPhone}</span>
+                      </div>
+                    )}
+                    {!fPhone && !mPhone && '—'}
                   </td>
                   <td className="text-center text-[10px] p-1.5 border border-slate-300">
                     {boy.last_check_in ? (

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { ActionResult, Boy, BoyFormData, DashboardStats } from '@/lib/types'
 import { getOverdueDays } from '@/lib/utils'
+import { isTodayBirthday, isBirthdayThisWeek } from '@/lib/birthday'
 
 // ─── Guard helper ────────────────────────────────────────────────────────────
 
@@ -51,6 +52,15 @@ async function requireActiveUser() {
   return { supabase, user, profile }
 }
 
+function parseMotherPhone(boy: any): string | null {
+  if (boy?.mother_phone) return boy.mother_phone
+  if (boy?.notes) {
+    const match = boy.notes.match(/\[(?:هاتف الأم|MOTHER_PHONE):\s*(.*?)\]/)
+    if (match) return match[1].trim()
+  }
+  return null
+}
+
 // ─── Get all boys with last check-in ────────────────────────────────────────
 
 export async function getBoys(
@@ -87,6 +97,7 @@ export async function getBoys(
 
   if (error) throw new Error(error.message)
 
+
   // Compute last_check_in and check_in_count in JS
   const boys: Boy[] = (data || []).map((boy: any) => {
     const dates = (boy.check_ins || []).map((c: any) => c.visit_date).filter(Boolean)
@@ -95,6 +106,8 @@ export async function getBoys(
       : null
     return {
       ...boy,
+      father_phone: boy.father_phone || boy.phone_number || null,
+      mother_phone: parseMotherPhone(boy),
       check_ins: undefined,
       last_check_in: lastCheckIn,
       check_in_count: dates.length,
@@ -142,6 +155,8 @@ export async function getBoy(id: string): Promise<Boy | null> {
 
   return {
     ...data,
+    father_phone: data.father_phone || data.phone_number || null,
+    mother_phone: parseMotherPhone(data),
     last_check_in: lastCheckIn,
     check_in_count: dates.length,
   }
@@ -153,25 +168,51 @@ export async function createBoy(formData: BoyFormData): Promise<ActionResult<{ i
   try {
     const { supabase, user } = await requireAdmin()
 
-    const { data, error } = await supabase
+    const fatherPhone = (formData.father_phone || formData.phone_number || '').trim() || null
+    const motherPhone = (formData.mother_phone || '').trim() || null
+
+    const basePayload: any = {
+      full_name: formData.full_name.trim(),
+      kg_level: formData.kg_level || 'kg1',
+      address: formData.address?.trim() || null,
+      date_of_birth: formData.date_of_birth || null,
+      phone_number: fatherPhone,
+      notes: formData.notes?.trim() || null,
+      created_by: user.id,
+    }
+
+    // Attempt insert with father_phone and mother_phone columns
+    let res = await supabase
       .from('boys')
       .insert({
-        full_name: formData.full_name.trim(),
-        kg_level: formData.kg_level || 'kg1',
-        address: formData.address?.trim() || null,
-        date_of_birth: formData.date_of_birth || null,
-        phone_number: formData.phone_number?.trim() || null,
-        notes: formData.notes?.trim() || null,
-        created_by: user.id,
+        ...basePayload,
+        father_phone: fatherPhone,
+        mother_phone: motherPhone,
       })
       .select('id')
       .single()
 
-    if (error) return { success: false, error: error.message }
+    // If columns don't exist yet in Supabase schema, fallback to inserting without them
+    if (res.error && (res.error.message.includes('father_phone') || res.error.message.includes('mother_phone'))) {
+      const fallbackNotes = motherPhone
+        ? `${basePayload.notes ? basePayload.notes + '\n' : ''}[هاتف الأم: ${motherPhone}]`
+        : basePayload.notes
+
+      res = await supabase
+        .from('boys')
+        .insert({
+          ...basePayload,
+          notes: fallbackNotes,
+        })
+        .select('id')
+        .single()
+    }
+
+    if (res.error) return { success: false, error: res.error.message }
 
     revalidatePath('/boys')
     revalidatePath('/')
-    return { success: true, data: { id: data.id } }
+    return { success: true, data: { id: res.data.id } }
   } catch (e: any) {
     return { success: false, error: e.message }
   }
@@ -183,19 +224,42 @@ export async function updateBoy(id: string, formData: BoyFormData): Promise<Acti
   try {
     const { supabase } = await requireAdmin()
 
-    const { error } = await supabase
+    const fatherPhone = (formData.father_phone || formData.phone_number || '').trim() || null
+    const motherPhone = (formData.mother_phone || '').trim() || null
+
+    const basePayload: any = {
+      full_name: formData.full_name.trim(),
+      kg_level: formData.kg_level || 'kg1',
+      address: formData.address?.trim() || null,
+      date_of_birth: formData.date_of_birth || null,
+      phone_number: fatherPhone,
+      notes: formData.notes?.trim() || null,
+    }
+
+    let res = await supabase
       .from('boys')
       .update({
-        full_name: formData.full_name.trim(),
-        kg_level: formData.kg_level || 'kg1',
-        address: formData.address?.trim() || null,
-        date_of_birth: formData.date_of_birth || null,
-        phone_number: formData.phone_number?.trim() || null,
-        notes: formData.notes?.trim() || null,
+        ...basePayload,
+        father_phone: fatherPhone,
+        mother_phone: motherPhone,
       })
       .eq('id', id)
 
-    if (error) return { success: false, error: error.message }
+    if (res.error && (res.error.message.includes('father_phone') || res.error.message.includes('mother_phone'))) {
+      const fallbackNotes = motherPhone
+        ? `${basePayload.notes ? basePayload.notes + '\n' : ''}[هاتف الأم: ${motherPhone}]`
+        : basePayload.notes
+
+      res = await supabase
+        .from('boys')
+        .update({
+          ...basePayload,
+          notes: fallbackNotes,
+        })
+        .eq('id', id)
+    }
+
+    if (res.error) return { success: false, error: res.error.message }
 
     revalidatePath('/boys')
     revalidatePath(`/boys/${id}`)
@@ -285,6 +349,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { data: boysWithLastCheckIn },
     { count: activeUsers },
     { data: recentCheckInsList },
+    { data: allBoysForBirthdays },
   ] = await Promise.all([
     supabase.from('boys').select('*', { count: 'exact', head: true }),
     supabase.from('boys').select('*', { count: 'exact', head: true }).eq('kg_level', 'kg1'),
@@ -297,6 +362,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .select(`*, boy:boys(id, full_name, profile_image_url), creator:profiles!created_by(id, full_name, email)`)
       .order('visit_date', { ascending: false })
       .limit(5),
+    supabase.from('boys').select('id, full_name, profile_image_url, date_of_birth, kg_level, phone_number, notes'),
   ])
 
   // Count overdue boys
@@ -307,6 +373,26 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     return lastDate < overdueThreshold
   }).length
 
+  // Calculate birthdays
+  const todayBirthdays: Boy[] = []
+  const weekBirthdays: Boy[] = []
+
+  for (const b of allBoysForBirthdays || []) {
+    if (isTodayBirthday(b.date_of_birth)) {
+      todayBirthdays.push({
+        ...b,
+        father_phone: (b as any).father_phone || b.phone_number || null,
+        mother_phone: parseMotherPhone(b),
+      } as Boy)
+    } else if (isBirthdayThisWeek(b.date_of_birth)) {
+      weekBirthdays.push({
+        ...b,
+        father_phone: (b as any).father_phone || b.phone_number || null,
+        mother_phone: parseMotherPhone(b),
+      } as Boy)
+    }
+  }
+
   return {
     totalBoys: totalBoys ?? 0,
     kg1Count: kg1Count ?? 0,
@@ -316,5 +402,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     overdueCount,
     activeUsers: activeUsers ?? 0,
     recentCheckInsList: (recentCheckInsList || []) as any,
+    todayBirthdays,
+    weekBirthdays,
   }
 }

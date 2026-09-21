@@ -41,12 +41,17 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const form = e.currentTarget
+    const fatherPhone = (form.elements.namedItem('father_phone') as HTMLInputElement)?.value ?? (form.elements.namedItem('phone_number') as HTMLInputElement)?.value ?? ''
+    const motherPhone = (form.elements.namedItem('mother_phone') as HTMLInputElement)?.value ?? ''
+
     const data: BoyFormData = {
       full_name: (form.elements.namedItem('full_name') as HTMLInputElement).value,
       kg_level: kgLevel,
       address: (form.elements.namedItem('address') as HTMLInputElement).value,
       date_of_birth: (form.elements.namedItem('date_of_birth') as HTMLInputElement).value,
-      phone_number: (form.elements.namedItem('phone_number') as HTMLInputElement).value,
+      phone_number: fatherPhone,
+      father_phone: fatherPhone,
+      mother_phone: motherPhone,
       notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value,
     }
 
@@ -215,15 +220,34 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
           leftIcon={<Calendar className="w-4 h-4 text-muted-foreground" />}
         />
 
-        <Input
-          id="phone_number"
-          name="phone_number"
-          label={t('phone_label')}
-          type="tel"
-          placeholder={t('phone_placeholder')}
-          defaultValue={boy?.phone_number ?? ''}
-          leftIcon={<Phone className="w-4 h-4 text-muted-foreground" />}
-        />
+        {/* Parents Contact Section */}
+        <div className="sm:col-span-2 p-4 rounded-2xl bg-muted/40 border border-border/80 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+            <Phone className="w-4 h-4 text-primary" />
+            <span>{language === 'ar' ? 'أرقام هواتف أولياء الأمور (التواصل)' : 'Parents Phone Numbers (Contact)'}</span>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Input
+              id="father_phone"
+              name="father_phone"
+              label={language === 'ar' ? 'رقم هاتف الأب / ولي الأمر' : "Father's Phone Number"}
+              type="tel"
+              placeholder="01xxxxxxxxx"
+              defaultValue={boy?.father_phone ?? boy?.phone_number ?? ''}
+              leftIcon={<span className="text-sm select-none">👨</span>}
+            />
+
+            <Input
+              id="mother_phone"
+              name="mother_phone"
+              label={language === 'ar' ? 'رقم هاتف الأم' : "Mother's Phone Number"}
+              type="tel"
+              placeholder="01xxxxxxxxx"
+              defaultValue={boy?.mother_phone ?? ''}
+              leftIcon={<span className="text-sm select-none">👩</span>}
+            />
+          </div>
+        </div>
 
         <div className="sm:col-span-2">
           <Input

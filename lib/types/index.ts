@@ -22,6 +22,8 @@ export interface Boy {
   address: string | null
   date_of_birth: string | null
   phone_number: string | null
+  father_phone?: string | null
+  mother_phone?: string | null
   notes: string | null
   created_by: string | null
   created_at: string
@@ -45,6 +47,55 @@ export interface CheckIn {
   boy?: Pick<Boy, 'id' | 'full_name' | 'profile_image_url'>
 }
 
+// ─── Attendance Types (Weekly Friday Attendance) ────────────────────────────
+
+export type AttendanceStatus = 'present' | 'absent' | 'excused'
+
+export interface AttendanceRecord {
+  id: string
+  boy_id: string
+  date: string // YYYY-MM-DD (Friday)
+  status: AttendanceStatus
+  notes?: string | null
+  marked_by?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface FridayInfo {
+  date: string // YYYY-MM-DD
+  dayNumber: number
+  labelAr: string
+  labelEn: string
+  isToday: boolean
+  isPast: boolean
+}
+
+export interface BoyAttendanceRow {
+  boy: Boy
+  attendance: Record<string, AttendanceStatus> // date -> status
+  presentCount: number
+  totalFridaysCount: number
+  attendanceRate: number // 0 - 100
+}
+
+export interface MonthlyAttendanceData {
+  year: number
+  month: number
+  monthNameAr: string
+  monthNameEn: string
+  fridays: FridayInfo[]
+  rows: BoyAttendanceRow[]
+  stats: {
+    totalBoys: number
+    totalFridays: number
+    overallAttendanceRate: number
+    perfectAttendanceCount: number
+    bestFridayDate: string | null
+    bestFridayAttendance: number
+  }
+}
+
 // ─── Form / Mutation Types ──────────────────────────────────────────────────
 
 export interface BoyFormData {
@@ -53,6 +104,8 @@ export interface BoyFormData {
   address: string
   date_of_birth: string
   phone_number: string
+  father_phone?: string
+  mother_phone?: string
   notes: string
 }
 
@@ -88,6 +141,8 @@ export interface DashboardStats {
   overdueCount: number          // no check-in in OVERDUE_DAYS
   activeUsers: number
   recentCheckInsList: (CheckIn & { boy: Pick<Boy, 'id' | 'full_name' | 'profile_image_url'> })[]
+  todayBirthdays?: Boy[]
+  weekBirthdays?: Boy[]
 }
 
 // ─── Filter/Sort Types ──────────────────────────────────────────────────────

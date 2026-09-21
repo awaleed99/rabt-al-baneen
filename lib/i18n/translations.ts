@@ -41,6 +41,7 @@ export const translations = {
     // Navigation
     nav_dashboard: 'لوحة التحكم',
     nav_boys: 'سجل البنين',
+    nav_attendance: 'حضور الجمعة',
     nav_add_boy: 'إضافة ولد جديد',
     nav_admin: 'لوحة الإدارة',
     nav_settings: 'الإعدادات',
@@ -246,6 +247,7 @@ export const translations = {
     // Navigation
     nav_dashboard: 'Dashboard',
     nav_boys: 'Boys Directory',
+    nav_attendance: 'Friday Attendance',
     nav_add_boy: 'Add New Boy',
     nav_admin: 'Admin Panel',
     nav_settings: 'Settings',

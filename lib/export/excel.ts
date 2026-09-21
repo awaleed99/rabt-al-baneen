@@ -50,7 +50,8 @@ export async function exportBoysToExcel({
       { key: 'kg_level', width: 12 },
       { key: 'address', width: 34 },
       { key: 'dob', width: 15 },
-      { key: 'phone', width: 18 },
+      { key: 'father_phone', width: 18 },
+      { key: 'mother_phone', width: 18 },
       { key: 'last_check_in', width: 16 },
       { key: 'check_in_count', width: 13 },
       { key: 'notes', width: 30 },
@@ -58,7 +59,7 @@ export async function exportBoysToExcel({
 
     // Row 1: Title Header
     const row1 = ws.addRow(['سجل الأولاد — رابطة البنين'])
-    ws.mergeCells('A1:I1')
+    ws.mergeCells('A1:J1')
     row1.height = 36
     const cellA1 = ws.getCell('A1')
     cellA1.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFFFF' } }
@@ -72,7 +73,7 @@ export async function exportBoysToExcel({
     // Row 2: Subtitle & Metadata
     const subtitleText = `العام الدراسي ${academicYear}   |   الفئة: ${sheetSubtitleSuffix || resolvedCategory}   |   تاريخ التصدير: ${new Date().toLocaleDateString('ar-EG')}   |   إجمالي المقيدين: ${sheetBoys.length}`
     const row2 = ws.addRow([subtitleText])
-    ws.mergeCells('A2:I2')
+    ws.mergeCells('A2:J2')
     row2.height = 24
     const cellA2 = ws.getCell('A2')
     cellA2.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF1E3A8A' } }
@@ -94,7 +95,8 @@ export async function exportBoysToExcel({
       'المرحلة',
       'العنوان ومكان السكن',
       'تاريخ الميلاد',
-      'موبايل ولي الأمر',
+      'موبايل الأب',
+      'موبايل الأم',
       'آخر زيارة',
       'عدد الزيارات',
       'ملاحظات',
@@ -120,7 +122,7 @@ export async function exportBoysToExcel({
     // Enable Autofilter on table headers
     ws.autoFilter = {
       from: 'A4',
-      to: 'I4',
+      to: 'J4',
     }
 
     // Data Rows
@@ -139,7 +141,8 @@ export async function exportBoysToExcel({
         (boy.kg_level || 'kg1').toUpperCase(),
         boy.address || '—',
         boy.date_of_birth ? formatDate(boy.date_of_birth) : '—',
-        boy.phone_number || '—',
+        boy.father_phone || boy.phone_number || '—',
+        boy.mother_phone || '—',
         boy.last_check_in ? formatDate(boy.last_check_in) : 'لم يُزَر بعد',
         boy.check_in_count ?? 0,
         boy.notes || '',
@@ -162,6 +165,7 @@ export async function exportBoysToExcel({
         }
 
         // Specific alignments & colors
+        const isKg2 = (boy.kg_level || '').toLowerCase() === 'kg2'
         if (colNumber === 1) {
           // Index
           cell.alignment = { vertical: 'middle', horizontal: 'center' }
@@ -173,7 +177,6 @@ export async function exportBoysToExcel({
         } else if (colNumber === 3) {
           // KG Level badge styling
           cell.alignment = { vertical: 'middle', horizontal: 'center' }
-          const isKg2 = (boy.kg_level || '').toLowerCase() === 'kg2'
           cell.font = {
             name: 'Calibri',
             size: 10,
@@ -185,11 +188,11 @@ export async function exportBoysToExcel({
             pattern: 'solid',
             fgColor: { argb: isKg2 ? 'FFECFDF5' : 'FFEFF6FF' },
           }
-        } else if (colNumber === 4 || colNumber === 9) {
+        } else if (colNumber === 4 || colNumber === 10) {
           // Address, Notes
           cell.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 }
         } else {
-          // Dates, Phone, Counts
+          // Dates, Phones, Counts
           cell.alignment = { vertical: 'middle', horizontal: 'center' }
         }
       })
