@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button-custom'
 import { Input } from '@/components/ui/input-custom'
 import { cn } from '@/lib/utils'
 import { isTodayBirthday } from '@/lib/birthday'
-import { downloadElementAsPdf } from '@/lib/export/pdf'
+import { printAttendanceWindow } from '@/lib/export/pdf'
 import {
   toggleAttendance,
   bulkSetFridayAttendance,
@@ -234,21 +234,18 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
   }
 
   // Export PDF
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
     setIsExportingPdf(true)
-    const toastId = toast.loading('جاري تجهيز وتنزيل كشف الحضور كـ PDF...')
     try {
-      const ok = await downloadElementAsPdf('attendance-monthly-pdf-sheet', {
-        filename: `كشف_حضور_${data.monthNameAr}_${data.year}.pdf`,
-        orientation: 'landscape',
+      const ok = printAttendanceWindow({
+        rows: filteredRows,
+        fridays: data.fridays,
+        monthNameAr: data.monthNameAr,
+        year: data.year,
       })
-      if (ok) {
-        toast.success('تم تنزيل كشف الحضور بنجاح! 📄✨', { id: toastId })
-      } else {
-        toast.error('تعذر توليد الـ PDF، يرجى المحاولة لاحقاً', { id: toastId })
+      if (!ok) {
+        toast.info('الرجاء الطباعة يدوياً من متصفحك')
       }
-    } catch {
-      toast.error('حدث خطأ أثناء تنزيل الـ PDF', { id: toastId })
     } finally {
       setIsExportingPdf(false)
     }

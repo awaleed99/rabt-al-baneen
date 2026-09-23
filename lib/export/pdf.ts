@@ -426,84 +426,48 @@ export async function downloadElementAsPdf(
   const orientation = options.orientation || 'landscape'
   const margin = options.marginMm ?? (orientation === 'landscape' ? [6, 8, 6, 8] : [8, 8, 8, 8])
 
-  // If element is hidden (e.g., hidden print:block), temporarily show it for rendering
+  // Show hidden elements temporarily (e.g., hidden print:block)
   const wasHidden = element.classList.contains('hidden')
   if (wasHidden) {
     element.classList.remove('hidden')
     element.style.display = 'block'
   }
 
-  const sanitizeCss = createColorSanitizer()
-
-  // 1. Intercept console.error globally during export to block html2canvas color notices
+  // Silence html2canvas oklab/lab/oklch console errors — these are non-fatal warnings.
+  // html2canvas falls back gracefully and still renders the PDF.
   const originalConsoleError = console.error
-  const originalWindowConsoleError = window.console ? window.console.error : null
-  const filterColorError = (...args: any[]) => {
-    const first = args[0]
-    const msg = typeof first === 'string' ? first : (first && first.message) || ''
-    if (msg.includes('unsupported color function') || msg.includes('oklab') || msg.includes('lab')) {
-      return
-    }
+  console.error = (...args: any[]) => {
+    const msg = typeof args[0] === 'string' ? args[0] : (args[0]?.message ?? '')
+    if (/(unsupported color function|oklab|oklch)/i.test(msg)) return
     originalConsoleError.apply(console, args)
   }
-  console.error = filterColorError
-  if (window.console) window.console.error = filterColorError
 
-  // 2. Patch global window.getComputedStyle so html2canvas (which calls window.getComputedStyle)
-  // NEVER receives oklab/oklch/lab functions
-  const originalGetComputedStyle = window.getComputedStyle.bind(window)
-  window.getComputedStyle = function (elt: Element, pseudoElt?: string | null) {
-    const comp = originalGetComputedStyle(elt, pseudoElt)
-    return new Proxy(comp, {
-      get(target, prop, receiver) {
-        const val = Reflect.get(target, prop, receiver)
-        if (typeof val === 'string' && /(oklab|oklch|lab)/i.test(val)) {
-          return sanitizeCss(val)
-        }
-        if (prop === 'getPropertyValue') {
-          return (propName: string) => {
-            const rawVal = target.getPropertyValue(propName)
-            if (typeof rawVal === 'string' && /(oklab|oklch|lab)/i.test(rawVal)) {
-              return sanitizeCss(rawVal)
-            }
-            return rawVal
-          }
-        }
-        return typeof val === 'function' ? val.bind(target) : val
-      },
-    })
-  }
-
-  // 3. Pre-sanitize the DOM element and all descendants by computing and stamping safe RGB values
-  const allElements = [element, ...Array.from(element.querySelectorAll('*'))]
-  const inlineStylesBackup = new Map<HTMLElement, string>()
-
-  for (const el of allElements) {
+  // Pre-sanitize all color values in the element tree before html2canvas reads them
+  const sanitizeCss = createColorSanitizer()
+  const allEls = [element, ...Array.from(element.querySelectorAll('*'))]
+  const styleBackups = new Map<HTMLElement, string>()
+  for (const el of allEls) {
     const htmlEl = el as HTMLElement
     if (!htmlEl.style) continue
-    inlineStylesBackup.set(htmlEl, htmlEl.getAttribute('style') || '')
-
-    const comp = originalGetComputedStyle(el)
-    if (!comp) continue
-
-    for (const prop of COLOR_PROPS) {
-      const val = comp[prop]
-      if (val && /(oklab|oklch|lab)/i.test(val)) {
-        const safeVal = sanitizeCss(val)
-        const cssProp = prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
-        htmlEl.style.setProperty(cssProp, safeVal, 'important')
+    styleBackups.set(htmlEl, htmlEl.getAttribute('style') ?? '')
+    try {
+      const comp = getComputedStyle(el)
+      for (const prop of COLOR_PROPS) {
+        const val = (comp as any)[prop]
+        if (val && /(oklab|oklch|lab)/i.test(val)) {
+          const cssProp = prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
+          htmlEl.style.setProperty(cssProp, sanitizeCss(val), 'important')
+        }
       }
-    }
-
-    const bs = comp.boxShadow
-    if (bs && /(oklab|oklch|lab)/i.test(bs)) {
-      htmlEl.style.setProperty('box-shadow', sanitizeCss(bs), 'important')
-    }
-
-    const ts = comp.textShadow
-    if (ts && /(oklab|oklch|lab)/i.test(ts)) {
-      htmlEl.style.setProperty('text-shadow', sanitizeCss(ts), 'important')
-    }
+      const bs = comp.boxShadow
+      if (bs && /(oklab|oklch|lab)/i.test(bs)) {
+        htmlEl.style.setProperty('box-shadow', sanitizeCss(bs), 'important')
+      }
+      const ts = comp.textShadow
+      if (ts && /(oklab|oklch|lab)/i.test(ts)) {
+        htmlEl.style.setProperty('text-shadow', sanitizeCss(ts), 'important')
+      }
+    } catch { /* ignore per-element errors */ }
   }
 
   try {
@@ -515,22 +479,17 @@ export async function downloadElementAsPdf(
       filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
-        scale: 2.2,
+        scale: 2.5,
         useCORS: true,
         letterRendering: true,
         logging: false,
         backgroundColor: '#ffffff',
         onclone: (clonedDoc: Document) => {
-          // Fallback style in clone head
           try {
             const styleTag = clonedDoc.createElement('style')
-            styleTag.innerHTML = `
-              *, *::before, *::after {
-                --tw-shadow-color: rgba(0, 0, 0, 0.08) !important;
-              }
-            `
+            styleTag.innerHTML = `*, *::before, *::after { --tw-shadow-color: rgba(0,0,0,0.08) !important; }`
             clonedDoc.head?.appendChild(styleTag)
-          } catch {}
+          } catch { /* silent */ }
         },
       },
       jsPDF: {
@@ -545,27 +504,17 @@ export async function downloadElementAsPdf(
     await html2pdf().set(opt).from(element).save()
     return true
   } catch (err) {
-    console.warn('downloadElementAsPdf warning/error:', err)
+    console.warn('[PDF export] error:', err)
     return false
   } finally {
-    // Restore global getComputedStyle
-    window.getComputedStyle = originalGetComputedStyle
-
-    // Restore console.error
     console.error = originalConsoleError
-    if (window.console && originalWindowConsoleError) {
-      window.console.error = originalWindowConsoleError
-    }
-
-    // Restore original inline styles
-    for (const [htmlEl, originalStyle] of inlineStylesBackup.entries()) {
+    for (const [htmlEl, originalStyle] of styleBackups.entries()) {
       if (originalStyle) {
         htmlEl.setAttribute('style', originalStyle)
       } else {
         htmlEl.removeAttribute('style')
       }
     }
-
     if (wasHidden) {
       element.classList.add('hidden')
       element.style.display = ''
@@ -586,3 +535,588 @@ export async function exportBoysToPdf({
   return printBoysRegistryWindow({ boys, kgLevel, categoryLabel, academicYear })
 }
 
+// ─── Shared Arabic font style block for all print windows ────────────────────
+function _arabicFontStyle(pageSize = 'A4 portrait'): string {
+  return `
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+    @page { size: ${pageSize}; margin: 10mm 12mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Cairo', Arial, sans-serif !important;
+      direction: rtl;
+      background: #ffffff;
+      color: #0f172a;
+      font-size: 11px;
+      line-height: 1.5;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @media print { .no-print { display: none !important; } }
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .action-btn {
+      background: #2563eb; color: #fff; border: none;
+      padding: 7px 16px; font-size: 13px; font-weight: 700;
+      border-radius: 6px; cursor: pointer;
+      font-family: 'Cairo', sans-serif;
+      margin-left: 8px;
+    }
+    .close-btn {
+      background: #475569; color: #fff; border: none;
+      padding: 7px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 6px; cursor: pointer;
+      font-family: 'Cairo', sans-serif;
+    }
+  `
+}
+
+// ─── Print-window: Monthly Birthdays ─────────────────────────────────────────
+export interface PrintBirthdaysOptions {
+  boys: Array<{
+    id: string
+    full_name: string
+    kg_level: string
+    turningAge: number
+    birthDay: number
+    dayNameAr: string
+    father_phone?: string | null
+    mother_phone?: string | null
+  }>
+  monthNameAr: string
+  year: number
+}
+
+export function printBirthdaysWindow({ boys, monthNameAr, year }: PrintBirthdaysOptions): boolean {
+  if (typeof window === 'undefined') return false
+  if (isMobileDevice()) return false
+
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return false
+
+  const today = new Date().toLocaleDateString('ar-EG')
+  const rows = boys
+    .map(
+      (b, idx) => `
+    <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#faf5ff'}">
+      <td style="text-align:center;font-weight:700;color:#6b7280">${idx + 1}</td>
+      <td style="font-weight:700;color:#0f172a;padding-right:8px">${b.full_name}</td>
+      <td style="text-align:center">
+        <span style="padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;
+          background:${b.kg_level === 'kg2' ? '#dcfce7' : '#dbeafe'};
+          color:${b.kg_level === 'kg2' ? '#166534' : '#1e40af'};
+          border:1px solid ${b.kg_level === 'kg2' ? '#86efac' : '#93c5fd'}">
+          ${b.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+        </span>
+      </td>
+      <td style="text-align:center;font-weight:700">${b.birthDay} ${monthNameAr}</td>
+      <td style="text-align:center;color:#4b5563">${b.dayNameAr}</td>
+      <td style="text-align:center;font-weight:700;color:#7e22ce">${b.turningAge} سنوات</td>
+      <td style="text-align:center;font-size:10px;direction:ltr">${b.father_phone || '—'}</td>
+      <td style="text-align:center;font-size:10px;direction:ltr">${b.mother_phone || '—'}</td>
+    </tr>
+  `
+    )
+    .join('')
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="utf-8">
+      <title>كشف أعياد الميلاد — ${monthNameAr} ${year}</title>
+      <style>
+        ${_arabicFontStyle('A4 portrait')}
+        h1 { font-size: 20px; font-weight: 800; color: #1e1b4b; }
+        h2 { font-size: 12px; font-weight: 700; color: #6b21a8; margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 11px; }
+        th {
+          background: #7e22ce !important; color: #fff !important;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact;
+          padding: 8px 8px; border: 1px solid #6b21a8;
+          text-align: center; font-weight: 700;
+        }
+        td { padding: 7px 8px; border: 1px solid #e9d5ff; vertical-align: middle; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+        .footer {
+          margin-top: 20px; padding-top: 12px; border-top: 1px solid #e9d5ff;
+          display: flex; justify-content: space-between;
+          font-size: 11px; color: #6b7280;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print action-bar">
+        <span>كشف أعياد الميلاد — ${monthNameAr} ${year}</span>
+        <div>
+          <button class="action-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+          <button class="close-btn" onclick="window.close()">✕ إغلاق</button>
+        </div>
+      </div>
+
+      <div style="border-bottom:3px solid #7e22ce;padding-bottom:14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h2>كنيسة الشهيد العظيم مارمرقس — فصل الأمير تادرس</h2>
+          <h1>كشف أعياد ميلاد الطلبة — شهر ${monthNameAr} (${year})</h1>
+        </div>
+        <div style="text-align:left;font-size:11px;color:#6b7280;line-height:1.7">
+          <div><strong>إجمالي المحتفلين:</strong> ${boys.length} طفل</div>
+          <div><strong>تاريخ الإصدار:</strong> ${today}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px">م</th>
+            <th style="text-align:right;padding-right:8px">اسم الطفل</th>
+            <th style="width:60px">المرحلة</th>
+            <th style="width:90px">تاريخ الميلاد</th>
+            <th style="width:80px">يوم الأسبوع</th>
+            <th style="width:75px">العمر الجديد</th>
+            <th style="width:110px">هاتف الأب</th>
+            <th style="width:110px">هاتف الأم</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      <div class="footer">
+        <span>فصل الأمير تادرس — رعاية وافتقاد أعياد الميلاد</span>
+        <span>توقيع خادم المرحلة: .......................................</span>
+      </div>
+
+      <script>
+        setTimeout(function() { window.focus(); window.print(); }, 400);
+      </script>
+    </body>
+    </html>
+  `)
+  printWindow.document.close()
+  return true
+}
+
+// ─── Print-window: Monthly Attendance ────────────────────────────────────────
+export interface PrintAttendanceOptions {
+  rows: Array<{
+    boy: { full_name: string; kg_level: string }
+    attendance: Record<string, string> // date -> status
+    presentCount: number
+    totalFridaysCount: number
+    attendanceRate: number
+  }>
+  fridays: Array<{ date: string; labelAr: string }>
+  monthNameAr: string
+  year: number
+}
+
+export function printAttendanceWindow({
+  rows,
+  fridays,
+  monthNameAr,
+  year,
+}: PrintAttendanceOptions): boolean {
+  if (typeof window === 'undefined') return false
+  if (isMobileDevice()) return false
+
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return false
+
+  const today = new Date().toLocaleDateString('ar-EG')
+
+  // Friday header columns
+  const fridayCols = fridays
+    .map((f) => `<th style="width:38px;min-width:34px">${f.labelAr}</th>`)
+    .join('')
+
+  const tableRows = rows
+    .map((row, idx) => {
+      const statusCells = fridays
+        .map((f) => {
+          const status = row.attendance[f.date]
+          let cell = '—'
+          let bg = 'transparent'
+          let color = '#94a3b8'
+          if (status === 'present') {
+            cell = '✓'
+            bg = '#dcfce7'
+            color = '#166534'
+          } else if (status === 'absent') {
+            cell = '✗'
+            bg = '#fee2e2'
+            color = '#991b1b'
+          } else if (status === 'excused') {
+            cell = 'م'
+            bg = '#fef9c3'
+            color = '#854d0e'
+          }
+          return `<td style="text-align:center;font-weight:700;font-size:13px;background:${bg} !important;color:${color};-webkit-print-color-adjust:exact;print-color-adjust:exact">${cell}</td>`
+        })
+        .join('')
+
+      const rateColor =
+        row.attendanceRate >= 80
+          ? '#166534'
+          : row.attendanceRate >= 50
+          ? '#854d0e'
+          : '#991b1b'
+
+      return `
+      <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f8fafc'}">
+        <td style="text-align:center;font-weight:700;color:#6b7280">${idx + 1}</td>
+        <td style="font-weight:700;color:#0f172a;padding-right:8px">${row.boy.full_name}</td>
+        <td style="text-align:center">
+          <span style="padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;
+            background:${row.boy.kg_level === 'kg2' ? '#dcfce7' : '#dbeafe'};
+            color:${row.boy.kg_level === 'kg2' ? '#166534' : '#1e40af'};
+            border:1px solid ${row.boy.kg_level === 'kg2' ? '#86efac' : '#93c5fd'};
+            -webkit-print-color-adjust:exact;print-color-adjust:exact">
+            ${row.boy.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+          </span>
+        </td>
+        ${statusCells}
+        <td style="text-align:center;font-weight:700;color:#0f172a">${row.presentCount}/${row.totalFridaysCount}</td>
+        <td style="text-align:center;font-weight:800;color:${rateColor}">${row.attendanceRate.toFixed(0)}%</td>
+      </tr>
+    `
+    })
+    .join('')
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="utf-8">
+      <title>كشف حضور الجمعة — ${monthNameAr} ${year}</title>
+      <style>
+        ${_arabicFontStyle('A4 landscape')}
+        h1 { font-size: 19px; font-weight: 800; color: #0c1b47; }
+        h2 { font-size: 12px; font-weight: 700; color: #1e3a8a; margin-bottom: 2px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 10.5px; }
+        th {
+          background: #1e3a8a !important; color: #fff !important;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact;
+          padding: 7px 5px; border: 1px solid #1e40af;
+          text-align: center; font-weight: 700;
+        }
+        td { padding: 6px 5px; border: 1px solid #cbd5e1; vertical-align: middle; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+        .footer {
+          margin-top: 20px; padding-top: 12px; border-top: 1px solid #cbd5e1;
+          display: flex; justify-content: space-between;
+          font-size: 11px; color: #6b7280;
+        }
+        .legend {
+          display: inline-flex; gap: 14px; font-size: 10px;
+          margin-top: 8px; color: #374151;
+        }
+        .legend span { display: inline-flex; align-items: center; gap: 4px; }
+      </style>
+    </head>
+    <body>
+      <div class="no-print action-bar">
+        <span>كشف حضور الجمعة — ${monthNameAr} ${year}</span>
+        <div>
+          <button class="action-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+          <button class="close-btn" onclick="window.close()">✕ إغلاق</button>
+        </div>
+      </div>
+
+      <div style="border-bottom:3px solid #1e3a8a;padding-bottom:14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h2>كنيسة الشهيد العظيم مارمرقس — فصل الأمير تادرس</h2>
+          <h1>كشف الحضور الأسبوعي — ${monthNameAr} ${year}</h1>
+          <div class="legend no-print">
+            <span>✓ <strong>حاضر</strong></span>
+            <span>✗ <strong>غائب</strong></span>
+            <span>م <strong>معذور</strong></span>
+          </div>
+        </div>
+        <div style="text-align:left;font-size:11px;color:#6b7280;line-height:1.7">
+          <div><strong>إجمالي الطلبة:</strong> ${rows.length} طفل</div>
+          <div><strong>عدد الجمع:</strong> ${fridays.length}</div>
+          <div><strong>تاريخ الإصدار:</strong> ${today}</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:34px">م</th>
+            <th style="text-align:right;padding-right:8px;min-width:120px">اسم الطفل</th>
+            <th style="width:50px">المرحلة</th>
+            ${fridayCols}
+            <th style="width:50px">الحضور</th>
+            <th style="width:50px">النسبة</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+
+      <div class="footer">
+        <span>فصل الأمير تادرس — سجل الحضور الرسمي</span>
+        <span>توقيع خادم المرحلة: .......................................</span>
+        <span>ختم الخدمة: .......................................</span>
+      </div>
+
+      <script>
+        setTimeout(function() { window.focus(); window.print(); }, 400);
+      </script>
+    </body>
+    </html>
+  `)
+  printWindow.document.close()
+  return true
+}
+
+// ─── Print-window: Honor Roll ─────────────────────────────────────────────────
+export interface PrintHonorRollOptions {
+  boys: Array<{
+    id: string
+    full_name: string
+    kg_level: string
+    profile_image_url?: string | null
+    notes?: string | null
+  }>
+  academicYear?: string
+  monthName?: string
+}
+
+export function printHonorRollWindow({
+  boys,
+  academicYear = '2025-2026 م',
+  monthName = '',
+}: PrintHonorRollOptions): boolean {
+  if (typeof window === 'undefined') return false
+  if (isMobileDevice()) return false
+
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) return false
+
+  const today = new Date().toLocaleDateString('ar-EG')
+
+  const ENCOURAGEMENTS = [
+    'أنت نجم فصلنا اللامع! ⭐',
+    'بطل حقيقي بكل المقاييس! 🦁',
+    'فخر فصل الأمير تادرس! 👑',
+    'أنت قدوة لكل زملائك! 🌟',
+    'ما شاء الله عليك يا بطل! 🎯',
+    'نجاحك يسعدنا كثيراً! 🎉',
+    'استمر دايماً كده يا بطل! 🚀',
+    'أنت من أفضل أبطالنا! 💪',
+    'شطارتك تملأ قلبنا فرحاً! ❤️',
+    'ربنا يبارك فيك ويكملك! 🙏',
+    'حضورك بهجة وسعادة! ✨',
+    'زملائك يفتخرون بيك! 🏅',
+  ]
+
+  const CARD_COLORS = [
+    { bg: '#ede9fe', border: '#8b5cf6', num: '#7c3aed', text: '#6d28d9', badge: '#ddd6fe' },
+    { bg: '#fef3c7', border: '#f59e0b', num: '#d97706', text: '#92400e', badge: '#fde68a' },
+    { bg: '#d1fae5', border: '#10b981', num: '#059669', text: '#065f46', badge: '#a7f3d0' },
+    { bg: '#fee2e2', border: '#ef4444', num: '#dc2626', text: '#991b1b', badge: '#fecaca' },
+    { bg: '#e0f2fe', border: '#0ea5e9', num: '#0284c7', text: '#075985', badge: '#bae6fd' },
+    { bg: '#fce7f3', border: '#ec4899', num: '#db2777', text: '#9d174d', badge: '#fbcfe8' },
+  ]
+
+  const RANK_EMOJIS = ['🥇', '🥈', '🥉', '🏅', '⭐', '🌟', '✨', '💫', '🎖️', '🏆', '🎗️', '🌈']
+
+  const cards = boys
+    .map((b, idx) => {
+      const color = CARD_COLORS[idx % CARD_COLORS.length]
+      const encouragement = ENCOURAGEMENTS[idx % ENCOURAGEMENTS.length]
+      const rankEmoji = RANK_EMOJIS[idx % RANK_EMOJIS.length]
+
+      const photoHtml = b.profile_image_url
+        ? `<img src="${b.profile_image_url}" alt="${b.full_name}" style="
+            width:80px;height:80px;border-radius:50%;
+            object-fit:cover;
+            border:3px solid ${color.border};
+            display:block;margin:0 auto 8px;
+            -webkit-print-color-adjust:exact;print-color-adjust:exact;
+          " />`
+        : `<div style="
+            width:80px;height:80px;border-radius:50%;
+            background:linear-gradient(135deg,${color.border},${color.num});
+            -webkit-print-color-adjust:exact;print-color-adjust:exact;
+            display:flex;align-items:center;justify-content:center;
+            margin:0 auto 8px;
+            font-size:26px;font-weight:900;color:#fff;
+            border:3px solid ${color.border};
+          ">${b.full_name.charAt(0)}</div>`
+
+      return `
+      <div style="
+        background:${color.bg};
+        border:2.5px solid ${color.border};
+        border-radius:16px;
+        padding:12px 10px 10px;
+        text-align:center;
+        page-break-inside:avoid;
+        position:relative;
+        -webkit-print-color-adjust:exact;
+        print-color-adjust:exact;
+      ">
+        <!-- rank badge -->
+        <div style="
+          position:absolute;top:8px;right:8px;
+          font-size:18px;line-height:1;
+        ">${rankEmoji}</div>
+
+        <!-- number badge -->
+        <div style="
+          position:absolute;top:8px;left:8px;
+          width:22px;height:22px;border-radius:50%;
+          background:${color.num};
+          -webkit-print-color-adjust:exact;print-color-adjust:exact;
+          color:#fff;font-size:10px;font-weight:900;
+          display:flex;align-items:center;justify-content:center;
+        ">${idx + 1}</div>
+
+        <!-- crown -->
+        <div style="font-size:20px;margin-bottom:2px;line-height:1">👑</div>
+
+        <!-- photo -->
+        ${photoHtml}
+
+        <!-- name -->
+        <div style="font-size:12px;font-weight:900;color:#0f172a;margin-bottom:5px;line-height:1.2">${b.full_name}</div>
+
+        <!-- kg badge -->
+        <div style="margin-bottom:6px">
+          <span style="
+            display:inline-block;padding:2px 10px;border-radius:20px;font-size:9px;font-weight:800;
+            background:${b.kg_level === 'kg2' ? '#dcfce7' : '#dbeafe'};
+            color:${b.kg_level === 'kg2' ? '#166534' : '#1e40af'};
+            border:1px solid ${b.kg_level === 'kg2' ? '#86efac' : '#93c5fd'};
+            -webkit-print-color-adjust:exact;print-color-adjust:exact;
+          ">${b.kg_level === 'kg2' ? 'KG2' : 'KG1'}</span>
+        </div>
+
+        <!-- encouragement -->
+        <div style="
+          background:${color.badge};
+          -webkit-print-color-adjust:exact;print-color-adjust:exact;
+          border-radius:8px;padding:5px 6px;
+          font-size:10px;font-weight:800;color:${color.text};
+          line-height:1.3;
+        ">${encouragement}</div>
+      </div>
+    `
+    })
+    .join('')
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+      <meta charset="utf-8">
+      <title>لوحة شرف أبطال — فصل الأمير تادرس</title>
+      <style>
+        ${_arabicFontStyle('A4 portrait')}
+        body { padding: 6mm; }
+        .header-band {
+          background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a8a 100%) !important;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact;
+          color: #fff;
+          padding: 16px 20px;
+          border-radius: 16px;
+          text-align: center;
+          margin-bottom: 14px;
+          border: 2px solid #fbbf24;
+        }
+        .header-band .trophy { font-size: 44px; line-height: 1; margin-bottom: 4px; }
+        .header-band h1 { font-size: 22px; font-weight: 900; color: #fbbf24; margin-bottom: 3px; }
+        .header-band .sub { font-size: 11px; color: #c7d2fe; }
+        .header-band .motto {
+          margin-top: 8px;
+          background: rgba(251,191,36,0.15);
+          border: 1px solid rgba(251,191,36,0.3);
+          border-radius: 8px;
+          padding: 5px 12px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #fde68a;
+          font-style: italic;
+        }
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+        .footer {
+          border-top: 2px solid #f59e0b;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact;
+          padding-top: 10px;
+          display: flex; justify-content: space-between; align-items: center;
+          font-size: 10px; color: #374151; text-align: center;
+          gap: 10px;
+        }
+        .footer-closing {
+          text-align: center;
+          font-size: 11px;
+          font-weight: 800;
+          color: #7c3aed;
+          margin-bottom: 8px;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print action-bar">
+        <span>🏆 لوحة شرف أبطال فصل الأمير تادرس — ${monthName || academicYear}</span>
+        <div>
+          <button class="action-btn" onclick="window.print()">🖨️ طباعة / حفظ PDF</button>
+          <button class="close-btn" onclick="window.close()">✕ إغلاق</button>
+        </div>
+      </div>
+
+      <div class="header-band">
+        <div class="trophy">🏆</div>
+        <h1>أبطال ونجوم فصلنا 🌟</h1>
+        <p class="sub">لوحة شرف أطفال فصل الأمير تادرس · كنيسة مارمرقس · ${monthName ? monthName + ' · ' : ''}العام ${academicYear}</p>
+        <p class="sub">${boys.length} بطل متميز · تاريخ الإصدار: ${today}</p>
+        <div class="motto">✨ «إيه أحلى من ولاد ملتزمين ومحبوبين وفرحانين!» ✨</div>
+      </div>
+
+      <div class="grid">${cards}</div>
+
+      <div class="footer-closing">
+        🌈 أحبائنا الأبطال — استمروا في التميز والالتزام وربنا يكملكم بالخير! 🌈
+      </div>
+
+      <div class="footer">
+        <div>
+          <div style="margin-bottom:4px;font-weight:700">توقيع مسؤول المرحلة</div>
+          <div style="font-family:monospace;color:#9ca3af">................................................</div>
+        </div>
+        <div style="text-align:center">
+          <div style="width:52px;height:52px;border:2px dashed #f59e0b;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:8px;color:#d97706;-webkit-print-color-adjust:exact;print-color-adjust:exact">ختم<br>الإدارة</div>
+        </div>
+        <div>
+          <div style="margin-bottom:4px;font-weight:700">اعتماد المشرف العام</div>
+          <div style="font-family:monospace;color:#9ca3af">................................................</div>
+        </div>
+      </div>
+
+      <script>
+        setTimeout(function() { window.focus(); window.print(); }, 500);
+      </script>
+    </body>
+    </html>
+  `)
+  printWindow.document.close()
+  return true
+}

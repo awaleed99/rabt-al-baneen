@@ -19,7 +19,7 @@ import { Avatar } from '@/components/ui/avatar-custom'
 import { getMonthBirthdaysData } from '@/lib/actions/birthdays'
 import { ARABIC_MONTHS } from '@/lib/attendance-utils'
 import { getWhatsAppGreetingUrl } from '@/lib/birthday'
-import { downloadElementAsPdf } from '@/lib/export/pdf'
+import { printBirthdaysWindow } from '@/lib/export/pdf'
 import { toast } from 'sonner'
 import type { BirthdayBoyInfo, MonthlyBirthdaysData } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -33,25 +33,15 @@ export function BirthdaysClient({ initialData }: BirthdaysClientProps) {
   const [activeMonth, setActiveMonth] = useState<number>(initialData.month)
   const [filterKg, setFilterKg] = useState<'all' | 'kg1' | 'kg2'>('all')
   const [isPending, startTransition] = useTransition()
-  const [isDownloading, setIsDownloading] = useState(false)
 
-  const handleDownloadPdf = async () => {
-    setIsDownloading(true)
-    const toastId = toast.loading('جاري توليد ملف كشف أعياد الميلاد كـ PDF...')
-    try {
-      const ok = await downloadElementAsPdf('birthdays-printable-sheet', {
-        filename: `كشف_أعياد_ميلاد_${data.monthNameAr}_${data.year}.pdf`,
-        orientation: 'portrait',
-      })
-      if (ok) {
-        toast.success('تم تحميل كشف أعياد الميلاد كـ PDF بنجاح! 🎂✨', { id: toastId })
-      } else {
-        toast.error('تعذر توليد الـ PDF، يرجى استخدام زر الطباعة المباشرة', { id: toastId })
-      }
-    } catch {
-      toast.error('حدث خطأ أثناء تنزيل الـ PDF', { id: toastId })
-    } finally {
-      setIsDownloading(false)
+  const handleDownloadPdf = () => {
+    const ok = printBirthdaysWindow({
+      boys: filteredBoys,
+      monthNameAr: data.monthNameAr,
+      year: data.year,
+    })
+    if (!ok) {
+      toast.info('الرجاء الطباعة يدوياً من متصفحك')
     }
   }
 
@@ -103,11 +93,10 @@ export function BirthdaysClient({ initialData }: BirthdaysClientProps) {
         <div className="flex items-center gap-2.5 flex-wrap">
           <Button
             onClick={handleDownloadPdf}
-            disabled={isDownloading}
             className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
           >
             <Download className="w-4 h-4" />
-            <span>{isDownloading ? 'جاري التحميل...' : 'تحميل كشف PDF فوري 📥'}</span>
+            <span>تحميل كشف PDF فوري 📥</span>
           </Button>
 
           <Button
