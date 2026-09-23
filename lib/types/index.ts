@@ -111,6 +111,7 @@ export interface BoyFormData {
   phone_number: string
   father_phone?: string
   mother_phone?: string
+  assigned_servant_id?: string | null
   notes: string
 }
 

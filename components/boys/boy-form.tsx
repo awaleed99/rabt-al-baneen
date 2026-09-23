@@ -3,21 +3,22 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Upload, User, MapPin, Calendar, Phone, FileText, X, Sparkles } from 'lucide-react'
+import { Upload, User, MapPin, Calendar, Phone, FileText, X, Sparkles, UserCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button-custom'
 import { Input, Textarea } from '@/components/ui/input-custom'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { createBoy, updateBoy, uploadBoyImage } from '@/lib/actions/boys'
-import type { Boy, BoyFormData } from '@/lib/types'
+import type { Boy, BoyFormData, Profile } from '@/lib/types'
 import { useLanguage } from '@/lib/i18n/context'
 import { cn } from '@/lib/utils'
 
 interface BoyFormProps {
   boy?: Boy
   mode: 'create' | 'edit'
+  servants?: Profile[]
 }
 
-export function BoyForm({ boy, mode }: BoyFormProps) {
+export function BoyForm({ boy, mode, servants }: BoyFormProps) {
   const { t, language } = useLanguage()
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -43,6 +44,7 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
     const form = e.currentTarget
     const fatherPhone = (form.elements.namedItem('father_phone') as HTMLInputElement)?.value ?? (form.elements.namedItem('phone_number') as HTMLInputElement)?.value ?? ''
     const motherPhone = (form.elements.namedItem('mother_phone') as HTMLInputElement)?.value ?? ''
+    const assignedServantId = (form.elements.namedItem('assigned_servant_id') as HTMLSelectElement)?.value || null
 
     const data: BoyFormData = {
       full_name: (form.elements.namedItem('full_name') as HTMLInputElement).value,
@@ -52,6 +54,7 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
       phone_number: fatherPhone,
       father_phone: fatherPhone,
       mother_phone: motherPhone,
+      assigned_servant_id: assignedServantId,
       notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value,
     }
 
@@ -248,6 +251,29 @@ export function BoyForm({ boy, mode }: BoyFormProps) {
             />
           </div>
         </div>
+
+        {/* Assigned Servant Section */}
+        {servants && servants.length > 0 && (
+          <div className="sm:col-span-2 p-4 rounded-2xl bg-muted/40 border border-border/80 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <UserCheck className="w-4 h-4 text-emerald-500" />
+              <span>{language === 'ar' ? 'الخادم المسؤول عن المتابعة' : 'Assigned Servant'}</span>
+            </div>
+            <select
+              id="assigned_servant_id"
+              name="assigned_servant_id"
+              defaultValue={boy?.assigned_servant_id ?? ''}
+              className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs sm:text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">{language === 'ar' ? '⚠️ (بدون خادم مسؤول حالياً)' : '⚠️ (No Servant Assigned)'}</option>
+              {servants.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.full_name} ({s.email})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="sm:col-span-2">
           <Input

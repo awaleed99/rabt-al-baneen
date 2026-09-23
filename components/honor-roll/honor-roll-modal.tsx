@@ -7,6 +7,7 @@ import {
   Award,
   Sparkles,
   Printer,
+  Download,
   X,
   Heart,
   Crown,
@@ -14,6 +15,8 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button-custom'
 import { Avatar } from '@/components/ui/avatar-custom'
+import { downloadElementAsPdf } from '@/lib/export/pdf'
+import { toast } from 'sonner'
 import type { Boy } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +36,7 @@ export function HonorRollModal({
   monthName = 'سبتمبر 2026',
 }: HonorRollModalProps) {
   const [filterKg, setFilterKg] = useState<'all' | 'kg1' | 'kg2'>('all')
+  const [isDownloading, setIsDownloading] = useState(false)
 
   if (!isOpen) return null
 
@@ -44,6 +48,26 @@ export function HonorRollModal({
 
   const handlePrint = () => {
     window.print()
+  }
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true)
+    const toastId = toast.loading('جاري توليد ملف لوحة الشرف عالي الدقة...')
+    try {
+      const ok = await downloadElementAsPdf('honor-roll-sheet', {
+        filename: 'لوحة_شرف_أبطال_فصل_الأمير_تادرس.pdf',
+        orientation: 'landscape',
+      })
+      if (ok) {
+        toast.success('تم تحميل لوحة الشرف كـ PDF بنجاح! 🏆✨', { id: toastId })
+      } else {
+        toast.error('تعذر توليد الـ PDF، يرجى استخدام زر الطباعة المباشرة', { id: toastId })
+      }
+    } catch {
+      toast.error('حدث خطأ أثناء تنزيل الـ PDF', { id: toastId })
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
@@ -110,11 +134,21 @@ export function HonorRollModal({
             </div>
 
             <Button
+              onClick={handleDownloadPdf}
+              disabled={isDownloading}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold shadow-md shadow-emerald-600/20 gap-2 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>{isDownloading ? 'جاري التحميل...' : 'تحميل PDF فوري 📥'}</span>
+            </Button>
+
+            <Button
               onClick={handlePrint}
-              className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold shadow-md shadow-amber-500/20 gap-2"
+              variant="outline"
+              className="border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-extrabold gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>طباعة كـ PDF</span>
+              <span>طباعة ورقية 🖨️</span>
             </Button>
 
             <button
@@ -128,7 +162,10 @@ export function HonorRollModal({
 
         {/* Printable Honor Roll Sheet */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-950 text-slate-100 print:p-0 print:m-0 print:bg-white print:text-black">
-          <div className="honor-roll-printable border-4 border-amber-500/60 rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-amber-500/5 via-slate-900/90 to-amber-500/10 shadow-xl relative overflow-hidden print:border-amber-600 print:p-4 print:bg-white">
+          <div
+            id="honor-roll-sheet"
+            className="honor-roll-printable border-4 border-amber-500/60 rounded-3xl p-6 sm:p-8 bg-gradient-to-b from-amber-500/5 via-slate-900/90 to-amber-500/10 shadow-xl relative overflow-hidden print:border-amber-600 print:p-4 print:bg-white"
+          >
             
             {/* Background Festive Accents */}
             <div className="absolute top-2 left-3 text-amber-500/15 pointer-events-none select-none text-7xl font-serif">

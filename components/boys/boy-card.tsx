@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { MapPin, Calendar, Clock, CheckCircle2, AlertCircle, Phone, MessageCircle } from 'lucide-react'
+import { MapPin, Calendar, Clock, CheckCircle2, AlertCircle, Phone, MessageCircle, UserCheck } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar-custom'
 import { Badge } from '@/components/ui/badge-custom'
 import { formatDate, formatRelative, isOverdue, calculateAge, getOverdueDays, cn } from '@/lib/utils'
@@ -127,6 +127,12 @@ export function BoyCard({ boy }: BoyCardProps) {
                 : t('never_visited')}
             </span>
           </div>
+          {boy.assigned_servant && (
+            <div className="flex items-center gap-2 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+              <UserCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>الخادم: {boy.assigned_servant.full_name}</span>
+            </div>
+          )}
         </div>
 
         {/* Parent Contacts Quick Bar */}

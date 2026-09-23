@@ -279,6 +279,76 @@ export async function assignBoyToServant(
 }
 
 /**
+ * Automatically distributes boys evenly across active servants
+ * If unassignedOnly is true, only distributes boys without an assigned servant.
+ * If false, redistributes all boys evenly.
+ */
+export async function autoDistributeBoysToServants(
+  unassignedOnly = true
+): Promise<ActionResult<{ assignedCount: number }>> {
+  try {
+    const { supabase } = await requireActiveUser()
+
+    // 1. Fetch active servants
+    const { data: servants } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('is_active', true)
+      .order('full_name', { ascending: true })
+
+    if (!servants || servants.length === 0) {
+      return { success: false, error: 'لا يوجد خدام نشطين مسجلين في النظام حالياً' }
+    }
+
+    // 2. Fetch boys
+    const { data: boysData, error: boysErr } = await supabase
+      .from('boys')
+      .select('id, notes')
+
+    if (boysErr || !boysData) {
+      return { success: false, error: boysErr?.message || 'تعذر جلب بيانات الأطفال' }
+    }
+
+    const boysToAssign = boysData.filter((b) => {
+      if (!unassignedOnly) return true
+      const assignedId = parseAssignedServantId(b)
+      return !assignedId
+    })
+
+    if (boysToAssign.length === 0) {
+      return { success: true, data: { assignedCount: 0 } }
+    }
+
+    // 3. Round-robin assign across servants
+    let count = 0
+    for (let i = 0; i < boysToAssign.length; i++) {
+      const boy = boysToAssign[i]
+      const targetServant = servants[i % servants.length]
+
+      // Try column update
+      const { error: colErr } = await supabase
+        .from('boys')
+        .update({ assigned_servant_id: targetServant.id })
+        .eq('id', boy.id)
+
+      if (colErr && (colErr.code === '42703' || colErr.message.includes('assigned_servant_id'))) {
+        let notes = (boy.notes || '').replace(/\[(?:ASSIGNED_TO|خادم_مسؤول):\s*[^\]]+\]/gi, '').trim()
+        notes = `${notes ? notes + ' ' : ''}[ASSIGNED_TO:${targetServant.id}]`
+        await supabase.from('boys').update({ notes }).eq('id', boy.id)
+      }
+      count++
+    }
+
+    revalidatePath('/care')
+    revalidatePath('/boys')
+    revalidatePath('/')
+    return { success: true, data: { assignedCount: count } }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
+/**
  * Records a new pastoral care visitation (call, home visit, church encounter, etc.)
  */
 export async function recordPastoralVisit(

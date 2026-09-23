@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { getBoy } from '@/lib/actions/boys'
+import { getBoy, getActiveServants } from '@/lib/actions/boys'
 import { createClient } from '@/lib/supabase/server'
 import { BoyForm } from '@/components/boys/boy-form'
 import type { Metadata } from 'next'
@@ -25,7 +25,10 @@ export default async function EditBoyPage({ params }: Props) {
   const isAdmin = profile?.role === 'admin' || user?.user_metadata?.role === 'admin' || user?.email === 'admin@rabt.app'
   if (!isAdmin) redirect(`/boys/${id}`)
 
-  const boy = await getBoy(id)
+  const [boy, servants] = await Promise.all([
+    getBoy(id),
+    getActiveServants(),
+  ])
   if (!boy) notFound()
 
   return (
@@ -34,7 +37,7 @@ export default async function EditBoyPage({ params }: Props) {
         <h1 className="text-2xl sm:text-3xl font-bold text-foreground">تعديل ملف الولد | Edit Profile</h1>
         <p className="text-muted-foreground text-sm mt-1">{boy.full_name}</p>
       </div>
-      <BoyForm boy={boy} mode="edit" />
+      <BoyForm boy={boy} mode="edit" servants={servants} />
     </div>
   )
 }

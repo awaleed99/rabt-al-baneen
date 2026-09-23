@@ -12,6 +12,7 @@ import {
   Award,
   TrendingUp,
   FileSpreadsheet,
+  Download,
   Check,
   X,
   Clock,
@@ -25,6 +26,7 @@ import { Button } from '@/components/ui/button-custom'
 import { Input } from '@/components/ui/input-custom'
 import { cn } from '@/lib/utils'
 import { isTodayBirthday } from '@/lib/birthday'
+import { downloadElementAsPdf } from '@/lib/export/pdf'
 import {
   toggleAttendance,
   bulkSetFridayAttendance,
@@ -53,6 +55,7 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
   const [search, setSearch] = useState('')
   const [isPending, startTransition] = useTransition()
   const [isExporting, setIsExporting] = useState(false)
+  const [isExportingPdf, setIsExportingPdf] = useState(false)
   const [togglingCell, setTogglingCell] = useState<string | null>(null)
 
   // Current year & month
@@ -230,6 +233,27 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
     }
   }
 
+  // Export PDF
+  const handleExportPdf = async () => {
+    setIsExportingPdf(true)
+    const toastId = toast.loading('جاري تجهيز وتنزيل كشف الحضور كـ PDF...')
+    try {
+      const ok = await downloadElementAsPdf('attendance-monthly-pdf-sheet', {
+        filename: `كشف_حضور_${data.monthNameAr}_${data.year}.pdf`,
+        orientation: 'landscape',
+      })
+      if (ok) {
+        toast.success('تم تنزيل كشف الحضور بنجاح! 📄✨', { id: toastId })
+      } else {
+        toast.error('تعذر توليد الـ PDF، يرجى المحاولة لاحقاً', { id: toastId })
+      }
+    } catch {
+      toast.error('حدث خطأ أثناء تنزيل الـ PDF', { id: toastId })
+    } finally {
+      setIsExportingPdf(false)
+    }
+  }
+
   // Filter rows by search term
   const filteredRows = data.rows.filter((r) =>
     search.trim() ? r.boy.full_name.toLowerCase().includes(search.trim().toLowerCase()) : true
@@ -299,9 +323,20 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
           <Button
             type="button"
             variant="outline"
+            onClick={handleExportPdf}
+            disabled={isExportingPdf || filteredRows.length === 0}
+            className="border-primary/40 text-primary hover:bg-primary/10 font-bold gap-2 cursor-pointer"
+          >
+            <Download className={cn('w-4 h-4', isExportingPdf && 'animate-spin')} />
+            <span>{isExportingPdf ? 'جاري التحميل...' : 'تصدير PDF 📄'}</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
             onClick={handleExportExcel}
             disabled={isExporting || filteredRows.length === 0}
-            className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10"
+            className="border-emerald-600/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer"
             leftIcon={
               isExporting ? (
                 <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
@@ -686,6 +721,90 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* ─── Printable Monthly Attendance Sheet for PDF Capture ─── */}
+      <div id="attendance-monthly-pdf-sheet" className="hidden print:block p-6 bg-white text-slate-900">
+        <div className="text-center border-b-2 border-slate-900 pb-4 mb-4">
+          <div className="flex justify-between items-center text-xs text-slate-600 mb-1">
+            <span>كنيسة الشهيد مارمرقس — فصل الأمير تادرس</span>
+            <span>العام الدراسي 2025-2026 م</span>
+            <span>تاريخ الاستخراج: {new Date().toLocaleDateString('ar-EG')}</span>
+          </div>
+          <h1 className="text-2xl font-extrabold text-slate-950">
+            كشف حضور جمعات شهر {data.monthNameAr} ({data.year})
+          </h1>
+          <p className="text-xs text-slate-600 mt-1 font-bold">
+            إجمالي المقيدين: {data.rows.length} ولد • متوسط نسبة الحضور: {data.stats.overallAttendanceRate}% • الجمعات: {data.fridays.length} جمعة
+          </p>
+        </div>
+
+        <table className="w-full text-right border-collapse text-xs">
+          <thead>
+            <tr className="bg-slate-900 text-white">
+              <th className="p-2 border border-slate-700 text-center w-8">م</th>
+              <th className="p-2 border border-slate-700 text-right">اسم الطفل (ثلاثي)</th>
+              <th className="p-2 border border-slate-700 text-center w-14">المرحلة</th>
+              {data.fridays.map((f, i) => (
+                <th key={f.date} className="p-2 border border-slate-700 text-center">
+                  <div>جمعة ({i + 1})</div>
+                  <div className="text-[10px] font-normal opacity-80">{f.dayNumber} {data.monthNameAr}</div>
+                </th>
+              ))}
+              <th className="p-2 border border-slate-700 text-center w-16">نسبة الحضور</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredRows.map((row, idx) => (
+              <tr key={row.boy.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                <td className="p-2 border border-slate-300 text-center font-mono font-bold text-slate-500">
+                  {idx + 1}
+                </td>
+                <td className="p-2 border border-slate-300 font-bold text-slate-900">
+                  {row.boy.full_name}
+                </td>
+                <td className="p-2 border border-slate-300 text-center font-bold">
+                  {row.boy.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+                </td>
+                {data.fridays.map((f) => {
+                  const status = row.attendance[f.date]
+                  return (
+                    <td key={f.date} className="p-2 border border-slate-300 text-center">
+                      {status === 'present' ? (
+                        <span className="font-bold text-emerald-700">✓ حاضر</span>
+                      ) : status === 'excused' ? (
+                        <span className="font-bold text-amber-600">عذر</span>
+                      ) : (
+                        <span className="text-rose-500 font-mono">✗</span>
+                      )}
+                    </td>
+                  )
+                })}
+                <td className="p-2 border border-slate-300 text-center font-extrabold font-mono text-slate-900">
+                  {row.attendanceRate}%
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Endorsement Footer */}
+        <div className="pt-6 mt-6 border-t-2 border-slate-900 grid grid-cols-3 text-center text-xs font-bold text-slate-800">
+          <div>
+            <p>توقيع مسؤول المرحلة</p>
+            <p className="text-slate-400 mt-6 font-mono">.......................................</p>
+          </div>
+          <div>
+            <p>ختم واعتماد الإدارة</p>
+            <div className="w-14 h-14 border border-dashed border-slate-400 rounded-full mx-auto mt-2 flex items-center justify-center text-[9px] text-slate-400">
+              ختم الإدارة
+            </div>
+          </div>
+          <div>
+            <p>اعتماد وتوقيع المشرف العام</p>
+            <p className="text-slate-400 mt-6 font-mono">.......................................</p>
+          </div>
         </div>
       </div>
     </div>

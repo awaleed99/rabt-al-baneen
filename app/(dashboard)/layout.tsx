@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Sidebar } from '@/components/layout/sidebar'
+import { MobileBottomNav } from '@/components/layout/mobile-bottom-nav'
 import type { Profile } from '@/lib/types'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -50,13 +51,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!profile || !profile.is_active) redirect('/login')
 
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
+    <div className="flex min-h-screen flex-col lg:flex-row relative">
       <Sidebar profile={profile as Profile} />
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1 overflow-x-hidden pb-24 lg:pb-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8 lg:py-10">
           {children}
         </div>
       </main>
+      <MobileBottomNav />
     </div>
   )
 }

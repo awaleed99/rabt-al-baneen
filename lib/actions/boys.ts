@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import type { ActionResult, Boy, BoyFormData, DashboardStats } from '@/lib/types'
+import type { ActionResult, Boy, BoyFormData, DashboardStats, Profile } from '@/lib/types'
 import { getOverdueDays } from '@/lib/utils'
 import { isTodayBirthday, isBirthdayThisWeek } from '@/lib/birthday'
 
@@ -61,6 +61,25 @@ function parseMotherPhone(boy: any): string | null {
   return null
 }
 
+function parseAssignedServantId(boy: any): string | null {
+  if (boy?.assigned_servant_id) return boy.assigned_servant_id
+  if (boy?.notes) {
+    const match = boy.notes.match(/\[(?:ASSIGNED_TO|خادم_مسؤول):\s*([a-f0-9-]+)\]/i)
+    if (match) return match[1].trim()
+  }
+  return null
+}
+
+export async function getActiveServants(): Promise<Profile[]> {
+  const { supabase } = await requireActiveUser()
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name, email, role, is_active, avatar_url, created_at, updated_at')
+    .eq('is_active', true)
+    .order('full_name', { ascending: true })
+  return (data || []) as Profile[]
+}
+
 // ─── Get all boys with last check-in ────────────────────────────────────────
 
 export async function getBoys(
@@ -108,6 +127,7 @@ export async function getBoys(
       ...boy,
       father_phone: boy.father_phone || boy.phone_number || null,
       mother_phone: parseMotherPhone(boy),
+      assigned_servant_id: parseAssignedServantId(boy),
       check_ins: undefined,
       last_check_in: lastCheckIn,
       check_in_count: dates.length,
@@ -157,6 +177,7 @@ export async function getBoy(id: string): Promise<Boy | null> {
     ...data,
     father_phone: data.father_phone || data.phone_number || null,
     mother_phone: parseMotherPhone(data),
+    assigned_servant_id: parseAssignedServantId(data),
     last_check_in: lastCheckIn,
     check_in_count: dates.length,
   }
@@ -181,7 +202,11 @@ export async function createBoy(formData: BoyFormData): Promise<ActionResult<{ i
       created_by: user.id,
     }
 
-    // Attempt insert with father_phone and mother_phone columns
+    if (formData.assigned_servant_id) {
+      basePayload.assigned_servant_id = formData.assigned_servant_id
+    }
+
+    // Attempt insert with father_phone, mother_phone, and assigned_servant_id columns
     let res = await supabase
       .from('boys')
       .insert({
@@ -193,16 +218,21 @@ export async function createBoy(formData: BoyFormData): Promise<ActionResult<{ i
       .single()
 
     // If columns don't exist yet in Supabase schema, fallback to inserting without them
-    if (res.error && (res.error.message.includes('father_phone') || res.error.message.includes('mother_phone'))) {
-      const fallbackNotes = motherPhone
-        ? `${basePayload.notes ? basePayload.notes + '\n' : ''}[هاتف الأم: ${motherPhone}]`
-        : basePayload.notes
+    if (res.error && (res.error.message.includes('father_phone') || res.error.message.includes('mother_phone') || res.error.message.includes('assigned_servant_id'))) {
+      let fallbackNotes = basePayload.notes || ''
+      if (motherPhone) {
+        fallbackNotes = `${fallbackNotes ? fallbackNotes + '\n' : ''}[هاتف الأم: ${motherPhone}]`
+      }
+      if (formData.assigned_servant_id) {
+        fallbackNotes = `${fallbackNotes ? fallbackNotes + '\n' : ''}[ASSIGNED_TO:${formData.assigned_servant_id}]`
+      }
 
+      delete basePayload.assigned_servant_id
       res = await supabase
         .from('boys')
         .insert({
           ...basePayload,
-          notes: fallbackNotes,
+          notes: fallbackNotes || null,
         })
         .select('id')
         .single()
@@ -236,6 +266,10 @@ export async function updateBoy(id: string, formData: BoyFormData): Promise<Acti
       notes: formData.notes?.trim() || null,
     }
 
+    if (formData.assigned_servant_id !== undefined) {
+      basePayload.assigned_servant_id = formData.assigned_servant_id || null
+    }
+
     let res = await supabase
       .from('boys')
       .update({
@@ -245,16 +279,21 @@ export async function updateBoy(id: string, formData: BoyFormData): Promise<Acti
       })
       .eq('id', id)
 
-    if (res.error && (res.error.message.includes('father_phone') || res.error.message.includes('mother_phone'))) {
-      const fallbackNotes = motherPhone
-        ? `${basePayload.notes ? basePayload.notes + '\n' : ''}[هاتف الأم: ${motherPhone}]`
-        : basePayload.notes
+    if (res.error && (res.error.message.includes('father_phone') || res.error.message.includes('mother_phone') || res.error.message.includes('assigned_servant_id'))) {
+      let fallbackNotes = (basePayload.notes || '').replace(/\[(?:ASSIGNED_TO|خادم_مسؤول):\s*[^\]]+\]/gi, '').trim()
+      if (motherPhone) {
+        fallbackNotes = `${fallbackNotes ? fallbackNotes + '\n' : ''}[هاتف الأم: ${motherPhone}]`
+      }
+      if (formData.assigned_servant_id) {
+        fallbackNotes = `${fallbackNotes ? fallbackNotes + '\n' : ''}[ASSIGNED_TO:${formData.assigned_servant_id}]`
+      }
 
+      delete basePayload.assigned_servant_id
       res = await supabase
         .from('boys')
         .update({
           ...basePayload,
-          notes: fallbackNotes,
+          notes: fallbackNotes || null,
         })
         .eq('id', id)
     }

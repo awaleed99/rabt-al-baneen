@@ -1,9 +1,11 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import { Printer, X, FileText, Smartphone, CheckCircle, Info } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Printer, X, FileText, Download, CheckCircle, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button-custom'
 import { formatDate } from '@/lib/utils'
+import { downloadElementAsPdf } from '@/lib/export/pdf'
+import { toast } from 'sonner'
 import type { Boy } from '@/lib/types'
 
 interface PrintRegistryModalProps {
@@ -24,6 +26,27 @@ export function PrintRegistryModal({
   academicYear = '2025-2026 م',
 }: PrintRegistryModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true)
+    const toastId = toast.loading('جاري توليد ملف الـ PDF عالي الدقة...')
+    try {
+      const ok = await downloadElementAsPdf('printable-registry-sheet', {
+        filename: `سجل_الأولاد_فصل_الأمير_تادرس_${resolvedCategory}.pdf`,
+        orientation: 'landscape',
+      })
+      if (ok) {
+        toast.success('تم تنزيل ملف الـ PDF بنجاح! 📥✨', { id: toastId })
+      } else {
+        toast.error('تعذر توليد الـ PDF، يرجى استخدام زر الطباعة المباشرة', { id: toastId })
+      }
+    } catch {
+      toast.error('حدث خطأ أثناء تنزيل الـ PDF', { id: toastId })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   // Prevent background scroll when modal is open & listen for Escape key
   useEffect(() => {
@@ -91,14 +114,25 @@ export function PrintRegistryModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end flex-wrap">
           <Button
             type="button"
-            onClick={handlePrint}
-            className="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2.5 shadow-lg shadow-blue-600/20 cursor-pointer"
-            leftIcon={<Printer className="w-4 h-4" />}
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
+            className="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-5 py-2.5 shadow-lg shadow-emerald-600/20 cursor-pointer gap-2"
           >
-            طباعة / حفظ كـ PDF
+            <Download className="w-4 h-4" />
+            <span>{isDownloading ? 'جاري التحميل...' : 'تحميل ملف PDF فوري 📥'}</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handlePrint}
+            className="flex-1 sm:flex-none border-blue-500/50 bg-blue-600/10 hover:bg-blue-600/20 text-blue-300 font-bold px-4 py-2.5 cursor-pointer gap-2"
+          >
+            <Printer className="w-4 h-4" />
+            <span>طباعة ورقية 🖨️</span>
           </Button>
 
           <Button
@@ -114,19 +148,13 @@ export function PrintRegistryModal({
       </div>
 
       {/* ─── Mobile Tips Banner (Hidden when printing) ─────────── */}
-      <div className="no-print w-full max-w-6xl mb-4 bg-gradient-to-r from-blue-950/60 to-indigo-950/60 border border-blue-800/40 rounded-xl p-3 text-xs text-blue-200 flex items-start gap-2.5 shadow-sm">
-        <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
-        <div className="leading-relaxed">
-          <strong>طريقة حفظ الـ PDF على الموبايل:</strong> اضغط على زر{' '}
-          <span className="font-semibold text-white">"طباعة / حفظ كـ PDF"</span> أعلاه.
-          <ul className="list-disc list-inside mt-1 space-y-0.5 text-blue-300/90">
-            <li>
-              <strong>على أجهزة الآيفون (iOS Safari):</strong> ستفتح نافذة الطباعة، قم بمباعدة إصبعيك (Pinch out) على معاينة الصفحة لفتحها كـ PDF كامل، ثم اضغط على أيقونة المشاركة واختر "حفظ في الملفات" أو أرسلها عبر الواتساب.
-            </li>
-            <li>
-              <strong>على أجهزة الأندرويد (Chrome):</strong> ستفتح نافذة الطباعة مباشرة، اختر من الأعلى <strong>"حفظ بتنسيق PDF"</strong> ثم اضغط على أيقونة التنزيل.
-            </li>
-          </ul>
+      <div className="no-print w-full max-w-6xl mb-4 bg-gradient-to-r from-emerald-950/40 via-blue-950/40 to-indigo-950/40 border border-emerald-500/30 rounded-xl p-3 text-xs text-emerald-200 flex items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-2">
+          <Info className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>
+            <strong>تنزيل فوري:</strong> يمكنك تنزيل ملف الـ PDF مباشرة على هاتفك أو كمبيوترك بالضغط على{' '}
+            <strong className="text-white">"تحميل ملف PDF فوري 📥"</strong>.
+          </span>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import {
   FileText,
   Printer,
+  Download,
   X,
   Users,
   CalendarCheck,
@@ -17,6 +18,8 @@ import {
 import { Button } from '@/components/ui/button-custom'
 import { getPriestMonthlyReport } from '@/lib/actions/reports'
 import { ARABIC_MONTHS } from '@/lib/attendance-utils'
+import { downloadElementAsPdf } from '@/lib/export/pdf'
+import { toast } from 'sonner'
 import type { PriestMonthlyReportData } from '@/lib/types'
 
 interface PriestReportModalProps {
@@ -37,6 +40,28 @@ export function PriestReportModal({
   const [month, setMonth] = useState(initialMonth || today.getMonth() + 1)
   const [report, setReport] = useState<PriestMonthlyReportData | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    if (!report) return
+    setIsDownloading(true)
+    const toastId = toast.loading('جاري توليد ملف التقرير الشهري كـ PDF...')
+    try {
+      const ok = await downloadElementAsPdf('priest-report-sheet', {
+        filename: `التقرير_الشهري_فصل_الأمير_تادرس_${report.monthNameAr}_${report.year}.pdf`,
+        orientation: 'portrait',
+      })
+      if (ok) {
+        toast.success('تم تحميل التقرير الشهري كـ PDF بنجاح! 📄✨', { id: toastId })
+      } else {
+        toast.error('تعذر توليد الـ PDF، يرجى استخدام زر الطباعة المباشرة', { id: toastId })
+      }
+    } catch {
+      toast.error('حدث خطأ أثناء تنزيل الـ PDF', { id: toastId })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   useEffect(() => {
     if (!isOpen) return
@@ -126,12 +151,22 @@ export function PriestReportModal({
             </div>
 
             <Button
+              onClick={handleDownloadPdf}
+              disabled={loading || !report || isDownloading}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>{isDownloading ? 'جاري التحميل...' : 'تحميل PDF فوري 📥'}</span>
+            </Button>
+
+            <Button
               onClick={handlePrint}
               disabled={loading || !report}
-              className="bg-primary hover:bg-primary/90 text-white font-bold gap-2"
+              variant="outline"
+              className="border-primary/50 bg-primary/10 hover:bg-primary/20 text-primary font-bold gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>طباعة التقرير (PDF)</span>
+              <span>طباعة ورقية 🖨️</span>
             </Button>
 
             <button
@@ -151,7 +186,10 @@ export function PriestReportModal({
               <p className="text-sm text-slate-400">جاري إعداد التقرير الشهري وتجميع الإحصائيات...</p>
             </div>
           ) : report ? (
-            <div className="priest-report-sheet border border-slate-800 rounded-2xl p-6 sm:p-8 bg-slate-900/60 shadow-lg print:border-none print:p-0 print:bg-white">
+            <div
+              id="priest-report-sheet"
+              className="priest-report-sheet border border-slate-800 rounded-2xl p-6 sm:p-8 bg-slate-900/60 shadow-lg print:border-none print:p-0 print:bg-white"
+            >
               
               {/* Header */}
               <div className="border-b-2 border-slate-700 pb-5 mb-6 text-center space-y-2">

@@ -6,6 +6,7 @@ import {
   Calendar,
   Gift,
   Printer,
+  Download,
   ChevronRight,
   ChevronLeft,
   MessageCircle,
@@ -18,6 +19,8 @@ import { Avatar } from '@/components/ui/avatar-custom'
 import { getMonthBirthdaysData } from '@/lib/actions/birthdays'
 import { ARABIC_MONTHS } from '@/lib/attendance-utils'
 import { getWhatsAppGreetingUrl } from '@/lib/birthday'
+import { downloadElementAsPdf } from '@/lib/export/pdf'
+import { toast } from 'sonner'
 import type { BirthdayBoyInfo, MonthlyBirthdaysData } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +33,27 @@ export function BirthdaysClient({ initialData }: BirthdaysClientProps) {
   const [activeMonth, setActiveMonth] = useState<number>(initialData.month)
   const [filterKg, setFilterKg] = useState<'all' | 'kg1' | 'kg2'>('all')
   const [isPending, startTransition] = useTransition()
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    setIsDownloading(true)
+    const toastId = toast.loading('جاري توليد ملف كشف أعياد الميلاد كـ PDF...')
+    try {
+      const ok = await downloadElementAsPdf('birthdays-printable-sheet', {
+        filename: `كشف_أعياد_ميلاد_${data.monthNameAr}_${data.year}.pdf`,
+        orientation: 'portrait',
+      })
+      if (ok) {
+        toast.success('تم تحميل كشف أعياد الميلاد كـ PDF بنجاح! 🎂✨', { id: toastId })
+      } else {
+        toast.error('تعذر توليد الـ PDF، يرجى استخدام زر الطباعة المباشرة', { id: toastId })
+      }
+    } catch {
+      toast.error('حدث خطأ أثناء تنزيل الـ PDF', { id: toastId })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
 
   const handleSelectMonth = (monthNum: number) => {
     setActiveMonth(monthNum)
@@ -76,13 +100,23 @@ export function BirthdaysClient({ initialData }: BirthdaysClientProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>{isDownloading ? 'جاري التحميل...' : 'تحميل كشف PDF فوري 📥'}</span>
+          </Button>
+
           <Button
             onClick={handlePrint}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold gap-2 shadow-sm"
+            variant="outline"
+            className="border-purple-500/40 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 font-bold gap-2 cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>طباعة كشف أعياد الميلاد (PDF)</span>
+            <span>طباعة ورقية 🖨️</span>
           </Button>
         </div>
       </div>
@@ -349,8 +383,8 @@ export function BirthdaysClient({ initialData }: BirthdaysClientProps) {
         )}
       </div>
 
-      {/* Printable Sheet for the Month (Shown only during Print) */}
-      <div className="hidden print:block print:p-6 print:bg-white print:text-black">
+      {/* Printable Sheet for the Month (Shown during Print & PDF capture) */}
+      <div id="birthdays-printable-sheet" className="hidden print:block print:p-6 print:bg-white print:text-black">
         <div className="text-center border-b-2 border-slate-900 pb-4 mb-4">
           <h2 className="text-sm font-bold text-slate-600">كنيسة مارمرقس — فصل الأمير تادرس</h2>
           <h1 className="text-2xl font-extrabold text-slate-900 mt-1">

@@ -334,6 +334,229 @@ export function printBoysRegistryWindow({
 }
 
 /**
+ * Options for client-side direct PDF file download
+ */
+export interface DownloadPdfOptions {
+  filename?: string
+  orientation?: 'portrait' | 'landscape'
+  format?: string
+  marginMm?: number | [number, number, number, number]
+}
+
+/**
+ * Sanitizes modern CSS color functions (oklab, oklch, lab) in cloned DOM to valid sRGB
+ * to ensure 100% compatibility with html2canvas and html2pdf without parser errors.
+ */
+function sanitizeColorsForHtml2Canvas(clonedDoc: Document, targetEl: HTMLElement | null) {
+  try {
+    const defaultView = clonedDoc.defaultView || window
+    const canvas = document.createElement('canvas')
+    canvas.width = 1
+    canvas.height = 1
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+
+    const colorCache = new Map<string, string>()
+
+    const cssColorToRgba = (colorStr: string): string => {
+      if (!ctx || !colorStr) return 'rgba(0,0,0,0)'
+      const cached = colorCache.get(colorStr)
+      if (cached) return cached
+
+      try {
+        ctx.clearRect(0, 0, 1, 1)
+        ctx.fillStyle = '#00000000'
+        ctx.fillStyle = colorStr
+        ctx.fillRect(0, 0, 1, 1)
+        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+        const alpha = Number((a / 255).toFixed(3))
+        const res = a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`
+        colorCache.set(colorStr, res)
+        return res
+      } catch {
+        return 'rgba(0,0,0,0)'
+      }
+    }
+
+    const MODERN_COLOR_REGEX = /(?:oklab|oklch|lab)\([^)]+\)/gi
+
+    const sanitizeCssString = (val: string): string => {
+      if (!val || typeof val !== 'string') return val
+      if (!MODERN_COLOR_REGEX.test(val)) return val
+      MODERN_COLOR_REGEX.lastIndex = 0
+      return val.replace(MODERN_COLOR_REGEX, (match) => cssColorToRgba(match))
+    }
+
+    // Proxy defaultView.getComputedStyle so any computed access by html2canvas returns standard sRGB
+    if (defaultView && defaultView.getComputedStyle) {
+      const rawGetComputedStyle = defaultView.getComputedStyle.bind(defaultView)
+      defaultView.getComputedStyle = function (elt: Element, pseudoElt?: string | null) {
+        const declaration = rawGetComputedStyle(elt, pseudoElt)
+        return new Proxy(declaration, {
+          get(target, prop, receiver) {
+            const value = Reflect.get(target, prop, receiver)
+            if (typeof value === 'string' && /(oklab|oklch|lab)/i.test(value)) {
+              return sanitizeCssString(value)
+            }
+            if (prop === 'getPropertyValue') {
+              return (propName: string) => {
+                const rawVal = target.getPropertyValue(propName)
+                if (typeof rawVal === 'string' && /(oklab|oklch|lab)/i.test(rawVal)) {
+                  return sanitizeCssString(rawVal)
+                }
+                return rawVal
+              }
+            }
+            return typeof value === 'function' ? value.bind(target) : value
+          },
+        })
+      }
+    }
+
+    // Also sanitize inline styles on all elements in cloned target
+    if (targetEl) {
+      const allElements = [targetEl, ...Array.from(targetEl.querySelectorAll('*'))]
+      const COLOR_PROPS = [
+        'color',
+        'backgroundColor',
+        'borderTopColor',
+        'borderRightColor',
+        'borderBottomColor',
+        'borderLeftColor',
+        'outlineColor',
+        'fill',
+        'stroke',
+      ] as const
+
+      for (const el of allElements) {
+        const htmlEl = el as HTMLElement
+        if (!htmlEl.style) continue
+        const comp = defaultView.getComputedStyle(el)
+        if (!comp) continue
+
+        for (const prop of COLOR_PROPS) {
+          const val = comp[prop]
+          if (val && /(oklab|oklch|lab)/i.test(val)) {
+            const sanitized = sanitizeCssString(val)
+            const cssProp = prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
+            htmlEl.style.setProperty(cssProp, sanitized, 'important')
+          }
+        }
+
+        const bs = comp.boxShadow
+        if (bs && /(oklab|oklch|lab)/i.test(bs)) {
+          htmlEl.style.setProperty('box-shadow', sanitizeCssString(bs), 'important')
+        }
+
+        const ts = comp.textShadow
+        if (ts && /(oklab|oklch|lab)/i.test(ts)) {
+          htmlEl.style.setProperty('text-shadow', sanitizeCssString(ts), 'important')
+        }
+      }
+    }
+
+    // Inject fallback stylesheet in clonedDoc to prevent any uncaught CSS variables with oklab/oklch
+    const styleEl = clonedDoc.createElement('style')
+    styleEl.innerHTML = `
+      *, *::before, *::after {
+        --tw-shadow-color: rgba(0, 0, 0, 0.08) !important;
+      }
+    `
+    clonedDoc.head?.appendChild(styleEl)
+  } catch (e) {
+    console.warn('sanitizeColorsForHtml2Canvas warning:', e)
+  }
+}
+
+/**
+ * Downloads a DOM element as a crisp, high-resolution PDF file directly on client device
+ * Works seamlessly on iOS Safari, Android Chrome, and Desktop browsers without blank screens.
+ */
+export async function downloadElementAsPdf(
+  elementOrId: string | HTMLElement,
+  options: DownloadPdfOptions = {}
+): Promise<boolean> {
+  if (typeof window === 'undefined') return false
+
+  const element =
+    typeof elementOrId === 'string' ? document.getElementById(elementOrId) : elementOrId
+
+  if (!element) {
+    console.error('downloadElementAsPdf: target element not found:', elementOrId)
+    return false
+  }
+
+  const filename = options.filename
+    ? options.filename.endsWith('.pdf')
+      ? options.filename
+      : `${options.filename}.pdf`
+    : 'document.pdf'
+
+  const orientation = options.orientation || 'landscape'
+  const margin = options.marginMm ?? (orientation === 'landscape' ? [6, 8, 6, 8] : [8, 8, 8, 8])
+
+  // If element is hidden (e.g., hidden print:block), temporarily show it for rendering
+  const wasHidden = element.classList.contains('hidden')
+  if (wasHidden) {
+    element.classList.remove('hidden')
+    element.style.display = 'block'
+  }
+
+  // Intercept any unhandled color errors from html2canvas logger
+  const originalConsoleError = console.error
+  console.error = (...args: any[]) => {
+    if (typeof args[0] === 'string' && args[0].includes('unsupported color function')) {
+      return
+    }
+    originalConsoleError.apply(console, args)
+  }
+
+  try {
+    const html2pdfModule = await import('html2pdf.js')
+    const html2pdf = (html2pdfModule as any).default || html2pdfModule
+
+    const opt = {
+      margin,
+      filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        onclone: (clonedDoc: Document, clonedEl?: HTMLElement) => {
+          const targetEl =
+            clonedEl ||
+            (typeof elementOrId === 'string'
+              ? clonedDoc.getElementById(elementOrId)
+              : null)
+          sanitizeColorsForHtml2Canvas(clonedDoc, targetEl)
+        },
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: options.format || 'a4',
+        orientation,
+        compress: true,
+      },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+    }
+
+    await html2pdf().set(opt).from(element).save()
+    return true
+  } catch (err) {
+    console.error('downloadElementAsPdf error:', err)
+    return false
+  } finally {
+    console.error = originalConsoleError
+    if (wasHidden) {
+      element.classList.add('hidden')
+      element.style.display = ''
+    }
+  }
+}
+
+/**
  * Direct file download PDF generator
  */
 export async function exportBoysToPdf({
@@ -345,3 +568,4 @@ export async function exportBoysToPdf({
   // Use native vector print for guaranteed 100% sharp Arabic output with zero letter collision
   return printBoysRegistryWindow({ boys, kgLevel, categoryLabel, academicYear })
 }
+

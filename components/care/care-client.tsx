@@ -31,6 +31,7 @@ import { formatRelative, cn } from '@/lib/utils'
 import { cleanPhoneNumber } from '@/lib/birthday'
 import { HonorRollModal } from '@/components/honor-roll/honor-roll-modal'
 import { PriestReportModal } from '@/components/reports/priest-report-modal'
+import { ServantAssignmentModal } from '@/components/care/servant-assignment-modal'
 import type {
   Boy,
   CareDashboardData,
@@ -54,10 +55,27 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
   // Modals
   const [isHonorRollOpen, setIsHonorRollOpen] = useState(false)
   const [isPriestReportOpen, setIsPriestReportOpen] = useState(false)
+  const [isAssignmentModalOpen, setIsAssignmentModalOpen] = useState(false)
   const [selectedBoyForVisit, setSelectedBoyForVisit] = useState<Boy | null>(null)
   const [visitDate, setVisitDate] = useState<string>(new Date().toISOString().split('T')[0])
   const [visitType, setVisitType] = useState<VisitationType>('call')
   const [visitNotes, setVisitNotes] = useState<string>('')
+
+  // Handle data updates from assignment modal
+  const handleAssignmentDataChange = (updatedBoys: Boy[]) => {
+    const assignedCount = updatedBoys.filter((b) => Boolean(b.assigned_servant_id)).length
+    const unassignedCount = updatedBoys.length - assignedCount
+    setData((prev) => ({
+      ...prev,
+      allBoys: updatedBoys,
+      assignedBoys: updatedBoys.filter((b) => b.assigned_servant_id === currentProfile.id),
+      stats: {
+        ...prev.stats,
+        assignedCount,
+        unassignedCount,
+      },
+    }))
+  }
   const [isPending, startTransition] = useTransition()
 
   // Filter boys
@@ -195,12 +213,25 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
           </p>
         </div>
 
-        {/* Action Buttons: Priest Report & Honor Roll */}
+        {/* Action Buttons: Assign Servants + Priest Report + Honor Roll */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          <Button
+            onClick={() => setIsAssignmentModalOpen(true)}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold gap-2 shadow-md shadow-emerald-600/20 cursor-pointer"
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>توزيع الخدام 👥</span>
+            {data.stats.unassignedCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold">
+                {data.stats.unassignedCount} بدون خادم
+              </span>
+            )}
+          </Button>
+
           <Button
             variant="outline"
             onClick={() => setIsPriestReportOpen(true)}
-            className="border-primary/40 hover:bg-primary/10 text-primary font-bold gap-2"
+            className="border-primary/40 hover:bg-primary/10 text-primary font-bold gap-2 cursor-pointer"
           >
             <FileText className="w-4 h-4" />
             <span>التقرير الشهري الشامل 📋</span>
@@ -208,7 +239,7 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
 
           <Button
             onClick={() => setIsHonorRollOpen(true)}
-            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold gap-2 shadow-md shadow-amber-500/15"
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-extrabold gap-2 shadow-md shadow-amber-500/15 cursor-pointer"
           >
             <Trophy className="w-4 h-4" />
             <span>لوحة الشرف للأطفال 🏆</span>
@@ -216,29 +247,48 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
         </div>
       </div>
 
-      {/* KPI Stats Cards */}
+      {/* KPI Stats Cards (Interactive) */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab('all')}
+          className="bg-card border border-border rounded-2xl p-4 shadow-xs text-right hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
-            <span>إجمالي المخدومين</span>
+            <span className="group-hover:text-primary transition-colors">إجمالي المخدومين</span>
             <Users className="w-4 h-4 text-primary" />
           </div>
           <p className="text-2xl font-extrabold text-foreground font-mono">
             {data.stats.totalBoys} <span className="text-xs font-normal text-muted-foreground">ولد</span>
           </p>
-        </div>
+          <p className="text-[10px] text-muted-foreground mt-1">عرض كل الأولاد ←</p>
+        </button>
 
-        <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setIsAssignmentModalOpen(true)}
+          className="bg-card border border-emerald-500/30 rounded-2xl p-4 shadow-xs text-right hover:border-emerald-500 hover:bg-emerald-500/5 hover:shadow-md transition-all cursor-pointer group relative overflow-hidden"
+        >
           <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
-            <span>موزعون على خدام</span>
+            <span className="group-hover:text-emerald-500 transition-colors font-bold">موزعون على خدام</span>
             <UserCheck className="w-4 h-4 text-emerald-500" />
           </div>
           <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">
-            {data.stats.assignedCount} <span className="text-xs font-normal text-muted-foreground">({data.stats.unassignedCount} بدون خادم)</span>
+            {data.stats.assignedCount}{' '}
+            <span className="text-xs font-normal text-muted-foreground">
+              ({data.stats.unassignedCount} بدون خادم)
+            </span>
           </p>
-        </div>
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 flex items-center gap-1">
+            <span>اضغط لتوزيع وتعديل الخدام ⚡</span>
+          </p>
+        </button>
 
-        <div className="bg-card border border-rose-500/30 bg-rose-500/5 rounded-2xl p-4 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab('urgent')}
+          className="bg-card border border-rose-500/30 bg-rose-500/5 rounded-2xl p-4 shadow-xs text-right hover:border-rose-500 hover:bg-rose-500/10 hover:shadow-md transition-all cursor-pointer group"
+        >
           <div className="flex items-center justify-between text-rose-600 dark:text-rose-400 text-xs mb-1 font-bold">
             <span>يحتاجون افتقاد عاجل ⚠️</span>
             <AlertTriangle className="w-4 h-4 text-rose-500" />
@@ -246,7 +296,8 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
           <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 font-mono">
             {data.urgentAlerts.length} <span className="text-xs font-normal">ولد</span>
           </p>
-        </div>
+          <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-1">عرض المتغيبين ←</p>
+        </button>
 
         <div className="bg-card border border-border rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between text-muted-foreground text-xs mb-1">
@@ -256,6 +307,7 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
           <p className="text-2xl font-extrabold text-sky-600 dark:text-sky-400 font-mono">
             {data.stats.visitsThisMonth} <span className="text-xs font-normal text-muted-foreground">تواصل</span>
           </p>
+          <p className="text-[10px] text-muted-foreground mt-1">مكالمات وزيارات مسجلة</p>
         </div>
       </div>
 
@@ -758,6 +810,15 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
       <PriestReportModal
         isOpen={isPriestReportOpen}
         onClose={() => setIsPriestReportOpen(false)}
+      />
+
+      {/* Servant Assignment & Distribution Modal */}
+      <ServantAssignmentModal
+        isOpen={isAssignmentModalOpen}
+        onClose={() => setIsAssignmentModalOpen(false)}
+        boys={data.allBoys}
+        servants={data.servants}
+        onDataChange={handleAssignmentDataChange}
       />
     </div>
   )
