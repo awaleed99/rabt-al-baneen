@@ -344,126 +344,58 @@ export interface DownloadPdfOptions {
 }
 
 /**
- * Sanitizes modern CSS color functions (oklab, oklch, lab) in cloned DOM to valid sRGB
- * to ensure 100% compatibility with html2canvas and html2pdf without parser errors.
+ * Color sanitizer helper using browser Canvas 2D engine
+ * Converts any modern color (oklab, oklch, lab, color-mix) to standard sRGB rgb/rgba
  */
-function sanitizeColorsForHtml2Canvas(clonedDoc: Document, targetEl: HTMLElement | null) {
-  try {
-    const defaultView = clonedDoc.defaultView || window
-    const canvas = document.createElement('canvas')
-    canvas.width = 1
-    canvas.height = 1
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+const COLOR_PROPS = [
+  'color',
+  'backgroundColor',
+  'borderTopColor',
+  'borderRightColor',
+  'borderBottomColor',
+  'borderLeftColor',
+  'outlineColor',
+  'fill',
+  'stroke',
+] as const
 
-    const colorCache = new Map<string, string>()
+const MODERN_COLOR_REGEX = /(?:oklab|oklch|lab)\([^)]+\)/gi
 
-    const cssColorToRgba = (colorStr: string): string => {
-      if (!ctx || !colorStr) return 'rgba(0,0,0,0)'
-      const cached = colorCache.get(colorStr)
-      if (cached) return cached
+function createColorSanitizer() {
+  if (typeof document === 'undefined') {
+    return (val: string) => val
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = 1
+  canvas.height = 1
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  const cache = new Map<string, string>()
 
-      try {
-        ctx.clearRect(0, 0, 1, 1)
-        ctx.fillStyle = '#00000000'
-        ctx.fillStyle = colorStr
-        ctx.fillRect(0, 0, 1, 1)
-        const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
-        const alpha = Number((a / 255).toFixed(3))
-        const res = a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`
-        colorCache.set(colorStr, res)
-        return res
-      } catch {
-        return 'rgba(0,0,0,0)'
-      }
+  const toRgba = (colorStr: string): string => {
+    if (!ctx || !colorStr) return 'rgba(0,0,0,0)'
+    const cached = cache.get(colorStr)
+    if (cached) return cached
+
+    try {
+      ctx.clearRect(0, 0, 1, 1)
+      ctx.fillStyle = '#00000000'
+      ctx.fillStyle = colorStr
+      ctx.fillRect(0, 0, 1, 1)
+      const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data
+      const alpha = Number((a / 255).toFixed(3))
+      const res = a === 255 ? `rgb(${r}, ${g}, ${b})` : `rgba(${r}, ${g}, ${b}, ${alpha})`
+      cache.set(colorStr, res)
+      return res
+    } catch {
+      return 'rgba(0,0,0,0)'
     }
+  }
 
-    const MODERN_COLOR_REGEX = /(?:oklab|oklch|lab)\([^)]+\)/gi
-
-    const sanitizeCssString = (val: string): string => {
-      if (!val || typeof val !== 'string') return val
-      if (!MODERN_COLOR_REGEX.test(val)) return val
-      MODERN_COLOR_REGEX.lastIndex = 0
-      return val.replace(MODERN_COLOR_REGEX, (match) => cssColorToRgba(match))
-    }
-
-    // Proxy defaultView.getComputedStyle so any computed access by html2canvas returns standard sRGB
-    if (defaultView && defaultView.getComputedStyle) {
-      const rawGetComputedStyle = defaultView.getComputedStyle.bind(defaultView)
-      defaultView.getComputedStyle = function (elt: Element, pseudoElt?: string | null) {
-        const declaration = rawGetComputedStyle(elt, pseudoElt)
-        return new Proxy(declaration, {
-          get(target, prop, receiver) {
-            const value = Reflect.get(target, prop, receiver)
-            if (typeof value === 'string' && /(oklab|oklch|lab)/i.test(value)) {
-              return sanitizeCssString(value)
-            }
-            if (prop === 'getPropertyValue') {
-              return (propName: string) => {
-                const rawVal = target.getPropertyValue(propName)
-                if (typeof rawVal === 'string' && /(oklab|oklch|lab)/i.test(rawVal)) {
-                  return sanitizeCssString(rawVal)
-                }
-                return rawVal
-              }
-            }
-            return typeof value === 'function' ? value.bind(target) : value
-          },
-        })
-      }
-    }
-
-    // Also sanitize inline styles on all elements in cloned target
-    if (targetEl) {
-      const allElements = [targetEl, ...Array.from(targetEl.querySelectorAll('*'))]
-      const COLOR_PROPS = [
-        'color',
-        'backgroundColor',
-        'borderTopColor',
-        'borderRightColor',
-        'borderBottomColor',
-        'borderLeftColor',
-        'outlineColor',
-        'fill',
-        'stroke',
-      ] as const
-
-      for (const el of allElements) {
-        const htmlEl = el as HTMLElement
-        if (!htmlEl.style) continue
-        const comp = defaultView.getComputedStyle(el)
-        if (!comp) continue
-
-        for (const prop of COLOR_PROPS) {
-          const val = comp[prop]
-          if (val && /(oklab|oklch|lab)/i.test(val)) {
-            const sanitized = sanitizeCssString(val)
-            const cssProp = prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
-            htmlEl.style.setProperty(cssProp, sanitized, 'important')
-          }
-        }
-
-        const bs = comp.boxShadow
-        if (bs && /(oklab|oklch|lab)/i.test(bs)) {
-          htmlEl.style.setProperty('box-shadow', sanitizeCssString(bs), 'important')
-        }
-
-        const ts = comp.textShadow
-        if (ts && /(oklab|oklch|lab)/i.test(ts)) {
-          htmlEl.style.setProperty('text-shadow', sanitizeCssString(ts), 'important')
-        }
-      }
-    }
-
-    // Inject fallback stylesheet in clonedDoc to prevent any uncaught CSS variables with oklab/oklch
-    const styleEl = clonedDoc.createElement('style')
-    styleEl.innerHTML = `
-      *, *::before, *::after {
-        --tw-shadow-color: rgba(0, 0, 0, 0.08) !important;
-      }
-    `
-    clonedDoc.head?.appendChild(styleEl)
-  } catch (e) {
-    console.warn('sanitizeColorsForHtml2Canvas warning:', e)
+  return (val: string): string => {
+    if (!val || typeof val !== 'string') return val
+    if (!/(oklab|oklch|lab)/i.test(val)) return val
+    MODERN_COLOR_REGEX.lastIndex = 0
+    return val.replace(MODERN_COLOR_REGEX, (match) => toRgba(match))
   }
 }
 
@@ -501,13 +433,77 @@ export async function downloadElementAsPdf(
     element.style.display = 'block'
   }
 
-  // Intercept any unhandled color errors from html2canvas logger
+  const sanitizeCss = createColorSanitizer()
+
+  // 1. Intercept console.error globally during export to block html2canvas color notices
   const originalConsoleError = console.error
-  console.error = (...args: any[]) => {
-    if (typeof args[0] === 'string' && args[0].includes('unsupported color function')) {
+  const originalWindowConsoleError = window.console ? window.console.error : null
+  const filterColorError = (...args: any[]) => {
+    const first = args[0]
+    const msg = typeof first === 'string' ? first : (first && first.message) || ''
+    if (msg.includes('unsupported color function') || msg.includes('oklab') || msg.includes('lab')) {
       return
     }
     originalConsoleError.apply(console, args)
+  }
+  console.error = filterColorError
+  if (window.console) window.console.error = filterColorError
+
+  // 2. Patch global window.getComputedStyle so html2canvas (which calls window.getComputedStyle)
+  // NEVER receives oklab/oklch/lab functions
+  const originalGetComputedStyle = window.getComputedStyle.bind(window)
+  window.getComputedStyle = function (elt: Element, pseudoElt?: string | null) {
+    const comp = originalGetComputedStyle(elt, pseudoElt)
+    return new Proxy(comp, {
+      get(target, prop, receiver) {
+        const val = Reflect.get(target, prop, receiver)
+        if (typeof val === 'string' && /(oklab|oklch|lab)/i.test(val)) {
+          return sanitizeCss(val)
+        }
+        if (prop === 'getPropertyValue') {
+          return (propName: string) => {
+            const rawVal = target.getPropertyValue(propName)
+            if (typeof rawVal === 'string' && /(oklab|oklch|lab)/i.test(rawVal)) {
+              return sanitizeCss(rawVal)
+            }
+            return rawVal
+          }
+        }
+        return typeof val === 'function' ? val.bind(target) : val
+      },
+    })
+  }
+
+  // 3. Pre-sanitize the DOM element and all descendants by computing and stamping safe RGB values
+  const allElements = [element, ...Array.from(element.querySelectorAll('*'))]
+  const inlineStylesBackup = new Map<HTMLElement, string>()
+
+  for (const el of allElements) {
+    const htmlEl = el as HTMLElement
+    if (!htmlEl.style) continue
+    inlineStylesBackup.set(htmlEl, htmlEl.getAttribute('style') || '')
+
+    const comp = originalGetComputedStyle(el)
+    if (!comp) continue
+
+    for (const prop of COLOR_PROPS) {
+      const val = comp[prop]
+      if (val && /(oklab|oklch|lab)/i.test(val)) {
+        const safeVal = sanitizeCss(val)
+        const cssProp = prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)
+        htmlEl.style.setProperty(cssProp, safeVal, 'important')
+      }
+    }
+
+    const bs = comp.boxShadow
+    if (bs && /(oklab|oklch|lab)/i.test(bs)) {
+      htmlEl.style.setProperty('box-shadow', sanitizeCss(bs), 'important')
+    }
+
+    const ts = comp.textShadow
+    if (ts && /(oklab|oklch|lab)/i.test(ts)) {
+      htmlEl.style.setProperty('text-shadow', sanitizeCss(ts), 'important')
+    }
   }
 
   try {
@@ -519,18 +515,22 @@ export async function downloadElementAsPdf(
       filename,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
-        scale: 2,
+        scale: 2.2,
         useCORS: true,
         letterRendering: true,
         logging: false,
         backgroundColor: '#ffffff',
-        onclone: (clonedDoc: Document, clonedEl?: HTMLElement) => {
-          const targetEl =
-            clonedEl ||
-            (typeof elementOrId === 'string'
-              ? clonedDoc.getElementById(elementOrId)
-              : null)
-          sanitizeColorsForHtml2Canvas(clonedDoc, targetEl)
+        onclone: (clonedDoc: Document) => {
+          // Fallback style in clone head
+          try {
+            const styleTag = clonedDoc.createElement('style')
+            styleTag.innerHTML = `
+              *, *::before, *::after {
+                --tw-shadow-color: rgba(0, 0, 0, 0.08) !important;
+              }
+            `
+            clonedDoc.head?.appendChild(styleTag)
+          } catch {}
         },
       },
       jsPDF: {
@@ -545,10 +545,27 @@ export async function downloadElementAsPdf(
     await html2pdf().set(opt).from(element).save()
     return true
   } catch (err) {
-    console.error('downloadElementAsPdf error:', err)
+    console.warn('downloadElementAsPdf warning/error:', err)
     return false
   } finally {
+    // Restore global getComputedStyle
+    window.getComputedStyle = originalGetComputedStyle
+
+    // Restore console.error
     console.error = originalConsoleError
+    if (window.console && originalWindowConsoleError) {
+      window.console.error = originalWindowConsoleError
+    }
+
+    // Restore original inline styles
+    for (const [htmlEl, originalStyle] of inlineStylesBackup.entries()) {
+      if (originalStyle) {
+        htmlEl.setAttribute('style', originalStyle)
+      } else {
+        htmlEl.removeAttribute('style')
+      }
+    }
+
     if (wasHidden) {
       element.classList.add('hidden')
       element.style.display = ''

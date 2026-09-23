@@ -725,63 +725,106 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
       </div>
 
       {/* ─── Printable Monthly Attendance Sheet for PDF Capture ─── */}
-      <div id="attendance-monthly-pdf-sheet" className="hidden print:block p-6 bg-white text-slate-900">
-        <div className="text-center border-b-2 border-slate-900 pb-4 mb-4">
-          <div className="flex justify-between items-center text-xs text-slate-600 mb-1">
-            <span>كنيسة الشهيد مارمرقس — فصل الأمير تادرس</span>
+      <div
+        id="attendance-monthly-pdf-sheet"
+        className="hidden print:block"
+        style={{
+          backgroundColor: '#ffffff',
+          color: '#0f172a',
+          padding: '24px',
+          fontFamily: 'Cairo, sans-serif',
+          direction: 'rtl',
+        }}
+      >
+        <div
+          style={{
+            borderBottom: '3px solid #0f172a',
+            paddingBottom: '16px',
+            marginBottom: '16px',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '11px',
+              color: '#475569',
+              marginBottom: '6px',
+            }}
+          >
+            <span style={{ fontWeight: 'bold' }}>كنيسة الشهيد العظيم مارمرقس — فصل الأمير تادرس</span>
             <span>العام الدراسي 2025-2026 م</span>
             <span>تاريخ الاستخراج: {new Date().toLocaleDateString('ar-EG')}</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-slate-950">
+          <h1 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', margin: '4px 0' }}>
             كشف حضور جمعات شهر {data.monthNameAr} ({data.year})
           </h1>
-          <p className="text-xs text-slate-600 mt-1 font-bold">
-            إجمالي المقيدين: {data.rows.length} ولد • متوسط نسبة الحضور: {data.stats.overallAttendanceRate}% • الجمعات: {data.fridays.length} جمعة
+          <p style={{ fontSize: '11px', color: '#475569', fontWeight: 'bold' }}>
+            إجمالي المقيدين: {data.rows.length} ولد • متوسط نسبة الحضور: {data.stats.overallAttendanceRate}% • عدد الجمعات: {data.fridays.length} جمعة
           </p>
         </div>
 
-        <table className="w-full text-right border-collapse text-xs">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'right' }}>
           <thead>
-            <tr className="bg-slate-900 text-white">
-              <th className="p-2 border border-slate-700 text-center w-8">م</th>
-              <th className="p-2 border border-slate-700 text-right">اسم الطفل (ثلاثي)</th>
-              <th className="p-2 border border-slate-700 text-center w-14">المرحلة</th>
+            <tr style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
+              <th style={{ padding: '8px 10px', border: '1px solid #334155', textAlign: 'center', width: '36px' }}>م</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #334155', textAlign: 'right' }}>اسم الطفل (ثلاثي)</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #334155', textAlign: 'center', width: '60px' }}>المرحلة</th>
               {data.fridays.map((f, i) => (
-                <th key={f.date} className="p-2 border border-slate-700 text-center">
+                <th key={f.date} style={{ padding: '8px 6px', border: '1px solid #334155', textAlign: 'center' }}>
                   <div>جمعة ({i + 1})</div>
-                  <div className="text-[10px] font-normal opacity-80">{f.dayNumber} {data.monthNameAr}</div>
+                  <div style={{ fontSize: '9px', fontWeight: 'normal', opacity: 0.85 }}>{f.dayNumber} {data.monthNameAr}</div>
                 </th>
               ))}
-              <th className="p-2 border border-slate-700 text-center w-16">نسبة الحضور</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #334155', textAlign: 'center', width: '75px' }}>نسبة الحضور</th>
             </tr>
           </thead>
           <tbody>
             {filteredRows.map((row, idx) => (
-              <tr key={row.boy.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                <td className="p-2 border border-slate-300 text-center font-mono font-bold text-slate-500">
+              <tr
+                key={row.boy.id}
+                style={{
+                  backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                  borderBottom: '1px solid #e2e8f0',
+                }}
+              >
+                <td style={{ padding: '8px 6px', border: '1px solid #cbd5e1', textAlign: 'center', fontFamily: 'monospace', fontWeight: 'bold', color: '#64748b' }}>
                   {idx + 1}
                 </td>
-                <td className="p-2 border border-slate-300 font-bold text-slate-900">
+                <td style={{ padding: '8px 10px', border: '1px solid #cbd5e1', fontWeight: 'bold', color: '#0f172a' }}>
                   {row.boy.full_name}
                 </td>
-                <td className="p-2 border border-slate-300 text-center font-bold">
-                  {row.boy.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+                <td style={{ padding: '8px 6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      backgroundColor: row.boy.kg_level === 'kg2' ? '#dcfce7' : '#dbeafe',
+                      color: row.boy.kg_level === 'kg2' ? '#166534' : '#1e40af',
+                    }}
+                  >
+                    {row.boy.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+                  </span>
                 </td>
                 {data.fridays.map((f) => {
                   const status = row.attendance[f.date]
                   return (
-                    <td key={f.date} className="p-2 border border-slate-300 text-center">
+                    <td key={f.date} style={{ padding: '8px 6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>
                       {status === 'present' ? (
-                        <span className="font-bold text-emerald-700">✓ حاضر</span>
+                        <span style={{ fontWeight: 'bold', color: '#15803d' }}>✓ حاضر</span>
                       ) : status === 'excused' ? (
-                        <span className="font-bold text-amber-600">عذر</span>
+                        <span style={{ fontWeight: 'bold', color: '#b45309' }}>عذر</span>
                       ) : (
-                        <span className="text-rose-500 font-mono">✗</span>
+                        <span style={{ color: '#dc2626', fontFamily: 'monospace' }}>✗ غياب</span>
                       )}
                     </td>
                   )
                 })}
-                <td className="p-2 border border-slate-300 text-center font-extrabold font-mono text-slate-900">
+                <td style={{ padding: '8px 10px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: '800', fontFamily: 'monospace', color: '#0f172a' }}>
                   {row.attendanceRate}%
                 </td>
               </tr>
@@ -790,20 +833,45 @@ export function AttendanceClient({ initialData, isAdmin }: AttendanceClientProps
         </table>
 
         {/* Endorsement Footer */}
-        <div className="pt-6 mt-6 border-t-2 border-slate-900 grid grid-cols-3 text-center text-xs font-bold text-slate-800">
+        <div
+          style={{
+            paddingTop: '20px',
+            marginTop: '20px',
+            borderTop: '2px solid #0f172a',
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            textAlign: 'center',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            color: '#1e293b',
+          }}
+        >
           <div>
             <p>توقيع مسؤول المرحلة</p>
-            <p className="text-slate-400 mt-6 font-mono">.......................................</p>
+            <p style={{ color: '#94a3b8', marginTop: '24px', fontFamily: 'monospace' }}>.......................................</p>
           </div>
           <div>
             <p>ختم واعتماد الإدارة</p>
-            <div className="w-14 h-14 border border-dashed border-slate-400 rounded-full mx-auto mt-2 flex items-center justify-center text-[9px] text-slate-400">
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                border: '1px dashed #94a3b8',
+                borderRadius: '50%',
+                margin: '8px auto 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '9px',
+                color: '#94a3b8',
+              }}
+            >
               ختم الإدارة
             </div>
           </div>
           <div>
             <p>اعتماد وتوقيع المشرف العام</p>
-            <p className="text-slate-400 mt-6 font-mono">.......................................</p>
+            <p style={{ color: '#94a3b8', marginTop: '24px', fontFamily: 'monospace' }}>.......................................</p>
           </div>
         </div>
       </div>

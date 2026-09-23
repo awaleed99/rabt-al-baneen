@@ -384,45 +384,118 @@ export function BirthdaysClient({ initialData }: BirthdaysClientProps) {
       </div>
 
       {/* Printable Sheet for the Month (Shown during Print & PDF capture) */}
-      <div id="birthdays-printable-sheet" className="hidden print:block print:p-6 print:bg-white print:text-black">
-        <div className="text-center border-b-2 border-slate-900 pb-4 mb-4">
-          <h2 className="text-sm font-bold text-slate-600">كنيسة مارمرقس — فصل الأمير تادرس</h2>
-          <h1 className="text-2xl font-extrabold text-slate-900 mt-1">
-            كشف أعياد ميلاد شهر {data.monthNameAr} ({data.year})
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            إجمالي المحتفلين: {data.boys.length} طفل | تم الاستخراج بتاريخ: {new Date().toLocaleDateString('ar-EG')}
-          </p>
+      <div
+        id="birthdays-printable-sheet"
+        className="hidden print:block"
+        style={{
+          backgroundColor: '#ffffff',
+          color: '#0f172a',
+          padding: '24px',
+          fontFamily: 'Cairo, sans-serif',
+          direction: 'rtl',
+        }}
+      >
+        <div
+          style={{
+            borderBottom: '3px solid #7e22ce',
+            paddingBottom: '16px',
+            marginBottom: '16px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <h2 style={{ fontSize: '12px', fontWeight: 'bold', color: '#6b21a8' }}>
+              كنيسة الشهيد العظيم مارمرقس — فصل الأمير تادرس
+            </h2>
+            <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#1e1b4b', marginTop: '4px' }}>
+              🎂 كشف أعياد ميلاد أبطال الفصل — شهر {data.monthNameAr} ({data.year})
+            </h1>
+          </div>
+          <div style={{ textAlign: 'left', fontSize: '11px', color: '#6b7280' }}>
+            <p><strong>إجمالي المحتفلين:</strong> {data.boys.length} طفل</p>
+            <p><strong>تاريخ الإصدار:</strong> {new Date().toLocaleDateString('ar-EG')}</p>
+          </div>
         </div>
 
-        <table className="w-full text-right border-collapse text-xs">
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px', textAlign: 'right' }}>
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-300">
-              <th className="p-2 border">م</th>
-              <th className="p-2 border">اسم الطفل</th>
-              <th className="p-2 border">المرحلة</th>
-              <th className="p-2 border">تاريخ الميلاد</th>
-              <th className="p-2 border">يوم الأسبوع</th>
-              <th className="p-2 border">العمر الجديد</th>
-              <th className="p-2 border">موبايل الأب</th>
-              <th className="p-2 border">موبايل الأم</th>
+            <tr style={{ backgroundColor: '#7e22ce', color: '#ffffff' }}>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'center', width: '36px' }}>م</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'right' }}>اسم الطفل</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'center', width: '60px' }}>المرحلة</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'center', width: '90px' }}>تاريخ الميلاد</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'center', width: '80px' }}>يوم الأسبوع</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'center', width: '75px' }}>العمر الجديد</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'center', width: '100px' }}>هاتف الأب</th>
+              <th style={{ padding: '8px 10px', border: '1px solid #6b21a8', textAlign: 'center', width: '100px' }}>هاتف الأم</th>
             </tr>
           </thead>
           <tbody>
             {filteredBoys.map((b, idx) => (
-              <tr key={b.id} className="border-b border-slate-200">
-                <td className="p-2 border font-mono">{idx + 1}</td>
-                <td className="p-2 border font-bold">{b.full_name}</td>
-                <td className="p-2 border">{b.kg_level === 'kg2' ? 'KG2' : 'KG1'}</td>
-                <td className="p-2 border font-mono">{b.birthDay} {data.monthNameAr}</td>
-                <td className="p-2 border">{b.dayNameAr}</td>
-                <td className="p-2 border font-bold">{b.turningAge} سنوات</td>
-                <td className="p-2 border font-mono">{b.father_phone || '—'}</td>
-                <td className="p-2 border font-mono">{b.mother_phone || '—'}</td>
+              <tr
+                key={b.id}
+                style={{
+                  backgroundColor: idx % 2 === 0 ? '#ffffff' : '#faf5ff',
+                  borderBottom: '1px solid #e9d5ff',
+                }}
+              >
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', textAlign: 'center', fontWeight: 'bold', color: '#6b7280' }}>
+                  {idx + 1}
+                </td>
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', fontWeight: 'bold', color: '#0f172a' }}>
+                  {b.full_name}
+                </td>
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', textAlign: 'center' }}>
+                  <span
+                    style={{
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      backgroundColor: b.kg_level === 'kg2' ? '#dcfce7' : '#dbeafe',
+                      color: b.kg_level === 'kg2' ? '#166534' : '#1e40af',
+                    }}
+                  >
+                    {b.kg_level === 'kg2' ? 'KG2' : 'KG1'}
+                  </span>
+                </td>
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', textAlign: 'center', fontWeight: 'bold' }}>
+                  {b.birthDay} {data.monthNameAr}
+                </td>
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', textAlign: 'center', color: '#4b5563' }}>
+                  {b.dayNameAr}
+                </td>
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', textAlign: 'center', fontWeight: 'bold', color: '#7e22ce' }}>
+                  {b.turningAge} سنوات 🎂
+                </td>
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', textAlign: 'center', fontFamily: 'monospace', direction: 'ltr' }}>
+                  {b.father_phone || '—'}
+                </td>
+                <td style={{ padding: '8px 10px', border: '1px solid #e9d5ff', textAlign: 'center', fontFamily: 'monospace', direction: 'ltr' }}>
+                  {b.mother_phone || '—'}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+
+        {/* Footer */}
+        <div
+          style={{
+            marginTop: '24px',
+            paddingTop: '16px',
+            borderTop: '1px solid #e9d5ff',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontSize: '11px',
+            color: '#6b7280',
+          }}
+        >
+          <span>فصل الأمير تادرس — رعاية وافتقاد أعياد الميلاد</span>
+          <span>توقيع خادم المرحلة: .......................................</span>
+        </div>
       </div>
     </div>
   )
