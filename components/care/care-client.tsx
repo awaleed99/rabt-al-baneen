@@ -173,9 +173,9 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
   const getPastoralWhatsAppUrl = (phone: string | null | undefined, boyName: string) => {
     const clean = cleanPhoneNumber(phone)
     if (!clean) return '#'
-    const text = `سلام ومحبة ونعمة من ربنا يسوع المسيح 🤍
-نحب نطمن على حبيبنا البطل ${boyName} وكل الأسرة المباركة من كنيسة مارمرقس — فصل الأمير تادرس ⛪
-نتمنى لكم كل بركة وخير ونفرح برؤيته دائماً في القداس والفصل! 🕊️`
+    const text = `تحية طيبة وخالص التقدير 🤍
+نحب نطمن على حبيبنا البطل ${boyName} وكل الأسرة الكريمة من إدارة فصل الأمير تادرس ✨
+نتمنى لكم دوام الصحة والخير ونسعد دائماً برؤيته ومتابعته المستمرة معنا! 🕊️`
     return `https://wa.me/${clean}?text=${encodeURIComponent(text)}`
   }
 
@@ -203,7 +203,7 @@ export function CareClient({ initialData, currentProfile }: CareClientProps) {
             className="border-primary/40 hover:bg-primary/10 text-primary font-bold gap-2"
           >
             <FileText className="w-4 h-4" />
-            <span>تقرير أبونا الشهري 📋</span>
+            <span>التقرير الشهري الشامل 📋</span>
           </Button>
 
           <Button

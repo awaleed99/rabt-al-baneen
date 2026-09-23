@@ -95,10 +95,10 @@ export function PriestReportModal({
             </div>
             <div>
               <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                <span>تقرير أمين الخدمة الشامل (لأبونا كاهن الكنيسة)</span>
+                <span>تقرير أمين الخدمة الشامل (للمشرف العام والإدارة)</span>
               </h2>
               <p className="text-xs text-slate-400">
-                ملخص إداري وروحي شهري معتمد لفصل الأمير تادرس
+                ملخص إداري وتربوي شهري معتمد لفصل الأمير تادرس
               </p>
             </div>
           </div>
@@ -205,7 +205,7 @@ export function PriestReportModal({
 
                 <div className="p-4 rounded-xl bg-slate-800/80 border border-slate-700/60 print:border-slate-300 print:bg-slate-50">
                   <div className="flex items-center justify-between text-slate-400 print:text-slate-600 text-xs mb-1">
-                    <span>يحتاجون صلاة وافتقاد</span>
+                    <span>يحتاجون متابعة وافتقاد</span>
                     <AlertTriangle className="w-4 h-4 text-amber-400" />
                   </div>
                   <p className="text-2xl font-extrabold text-amber-400 print:text-amber-700 font-mono">
@@ -245,11 +245,11 @@ export function PriestReportModal({
               <div className="mb-6">
                 <h3 className="text-sm font-bold text-amber-400 print:text-amber-800 flex items-center gap-2 mb-2">
                   <AlertTriangle className="w-4 h-4" />
-                  <span>ثانياً: أطفال يحتاجون صلاة وافتقاد خاص ومتابعة تليفونية عاجلة ({report.urgentCareBoys.length} ولد)</span>
+                  <span>ثانياً: أطفال يحتاجون متابعة وافتقاد خاص وتواصل تليفوني عاجل ({report.urgentCareBoys.length} ولد)</span>
                 </h3>
                 {report.urgentCareBoys.length === 0 ? (
                   <p className="text-xs text-emerald-400 bg-emerald-500/10 p-3 rounded-xl border border-emerald-500/20 font-bold">
-                    نشكر الله! جميع الأطفال منتظمون وتتم متابعتهم بانتظام.
+                    ممتاز! جميع الأطفال منتظمون وتتم متابعتهم بانتظام.
                   </p>
                 ) : (
                   <div className="space-y-1.5">
@@ -319,14 +319,14 @@ export function PriestReportModal({
                 </div>
               </div>
 
-              {/* Official Signatures & Priest Directives */}
+              {/* Official Signatures & Directives */}
               <div className="pt-6 border-t-2 border-slate-700 grid grid-cols-2 gap-4 text-xs font-bold text-slate-300 print:text-slate-900">
                 <div className="space-y-8">
-                  <p>توقيع أمين خدمة فصل الأمير تادرس:</p>
+                  <p>توقيع مسؤول فصل الأمير تادرس:</p>
                   <p className="text-slate-500 print:text-slate-600 font-mono">....................................................</p>
                 </div>
                 <div className="space-y-8 text-left">
-                  <p>ملاحظات وبركة أبونا كاهن الكنيسة:</p>
+                  <p>ملاحظات وتوجيهات المشرف العام / الإدارة:</p>
                   <p className="text-slate-500 print:text-slate-600 font-mono">....................................................</p>
                 </div>
               </div>

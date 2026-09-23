@@ -159,10 +159,10 @@ export function HonorRollModal({
                 </h1>
               </div>
 
-              {/* Bible Verse */}
+              {/* Inspirational Motto */}
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl py-2 px-4 max-w-2xl mx-auto print:border-amber-600/40">
-                <p className="text-xs sm:text-sm font-semibold text-amber-200 print:text-amber-950 font-serif italic">
-                  «دَعُوا الأَوْلاَدَ يَأْتُونَ إِلَيَّ وَلاَ تَمْنَعُوهُمْ، لأَنَّ لِمِثْلِ هؤُلاَءِ مَلَكُوتَ السَّمَاوَاتِ» (متى ١٩: ١٤)
+                <p className="text-xs sm:text-sm font-bold text-amber-200 print:text-amber-950 font-serif italic">
+                  «أبطالنا المتميزون فخر لنا ورمز للالتزام والنشاط وحسن الخلق والتفوق»
                 </p>
               </div>
             </div>
@@ -174,8 +174,8 @@ export function HonorRollModal({
                 const medal = medals[index % 3]
                 const badges = [
                   'نجم الالتزام والحضور 🌟',
-                  'بطل القداس والسلوك الجميل 🤍',
-                  'صديق الملائكة المتميز ✨',
+                  'بطل الالتزام والسلوك الجميل 🤍',
+                  'بطل النشاط والتفوق المتميز ✨',
                   'شعلة النشاط والمحبة ❤️',
                 ]
                 const badgeTitle = badges[index % badges.length]
@@ -232,20 +232,20 @@ export function HonorRollModal({
               })}
             </div>
 
-            {/* Official Church Endorsement Footer */}
+            {/* Official Endorsement Footer */}
             <div className="pt-6 border-t-2 border-amber-500/40 grid grid-cols-3 text-center text-xs sm:text-sm font-bold text-amber-300/90 print:text-slate-900">
               <div className="space-y-6">
-                <p>توقيع خادم المرحلة</p>
+                <p>توقيع مسؤول المرحلة</p>
                 <p className="text-slate-500 print:text-slate-600 font-mono">.......................................</p>
               </div>
               <div className="space-y-6">
-                <p>ختم واعتماد الكنيسة</p>
+                <p>ختم واعتماد الإدارة</p>
                 <div className="w-16 h-16 border-2 border-dashed border-amber-500/50 rounded-full mx-auto flex items-center justify-center text-[10px] text-amber-500/70">
-                  ختم الكنيسة
+                  ختم الإدارة
                 </div>
               </div>
               <div className="space-y-6">
-                <p>بركة وتوقيع أبونا كاهن الكنيسة</p>
+                <p>اعتماد وتوقيع المشرف العام</p>
                 <p className="text-slate-500 print:text-slate-600 font-mono">.......................................</p>
               </div>
             </div>

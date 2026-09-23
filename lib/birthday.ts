@@ -92,12 +92,12 @@ export function getWhatsAppGreetingUrl(
   const normalized = cleanPhoneNumber(phone)
   if (!normalized) return null
 
-  const greetingTarget = parentRole === 'father' ? 'أستاذنا الحبيب ولي أمر' : 'أم البطل الغالية والدة'
-  const message = `سلام ومحبة ونعمة من ربنا يسوع المسيح ✝️
-كل سنة وحبيبنا البطل ${boyName} طيب وبألف خير بمناسبة عيد ميلاده المبارك! 🎉🎂🎈
-نتمنى له عاماً سعيداً ممتلئاً بالبركة والنعمة والنمو في حضن الكنيسة ❤️
-خالص محبتنا وصلواتنا 🤍
-— فصل الأمير تادرس | كنيسة مارمرقس`
+  const greetingTarget = parentRole === 'father' ? 'أستاذنا الفاضل ولي أمر' : 'والدة البطل الغالية'
+  const message = `أطيب التهاني وأجمل الأمنيات 🎈
+كل سنة وحبيبنا البطل ${boyName} طيب وبألف خير بمناسبة عيد ميلاده السعيد! 🎉🎂
+نتمنى له عاماً مليئاً بالصحة والنجاح والتوفيق والسعادة الدائمة ❤️
+خالص المحبة والتقدير 🤍
+— إدارة فصل الأمير تادرس`
 
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`
 }
