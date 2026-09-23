@@ -32,13 +32,18 @@ export interface Boy {
   last_check_in?: string | null
   check_in_count?: number
   creator?: Pick<Profile, 'id' | 'full_name' | 'email'>
+  assigned_servant_id?: string | null
+  assigned_servant?: Pick<Profile, 'id' | 'full_name' | 'email'>
 }
+
+export type VisitationType = 'call' | 'home' | 'church' | 'health' | 'general'
 
 export interface CheckIn {
   id: string
   boy_id: string
   created_by: string | null
   visit_date: string
+  visitation_type?: VisitationType
   notes: string | null
   created_at: string
   updated_at: string
@@ -156,5 +161,80 @@ export interface BoysFilter {
   sortField: SortField
   sortOrder: SortOrder
   overdueOnly: boolean
+}
+
+// ─── Pastoral Care & Visitation Types ───────────────────────────────────────
+
+export interface PastoralAlert {
+  boy: Boy
+  reason: 'consecutive_absences' | 'no_visit_long' | 'never_visited'
+  descriptionAr: string
+  descriptionEn: string
+  consecutiveAbsencesCount?: number
+  daysSinceLastVisit?: number
+}
+
+export interface CareDashboardData {
+  allBoys: Boy[]
+  assignedBoys: Boy[]
+  urgentAlerts: PastoralAlert[]
+  servants: Profile[]
+  recentVisitations: (CheckIn & { boy?: Pick<Boy, 'id' | 'full_name' | 'profile_image_url' | 'kg_level'> })[]
+  stats: {
+    totalBoys: number
+    assignedCount: number
+    unassignedCount: number
+    urgentCount: number
+    visitsThisMonth: number
+  }
+}
+
+// ─── Monthly Birthdays Explorer Types ────────────────────────────────────────
+
+export interface BirthdayBoyInfo extends Boy {
+  turningAge: number
+  birthDay: number
+  birthMonth: number
+  dayNameAr: string
+  dayNameEn: string
+  isToday: boolean
+}
+
+export interface MonthlyBirthdaysData {
+  year: number
+  month: number
+  monthNameAr: string
+  monthNameEn: string
+  boys: BirthdayBoyInfo[]
+  stats: {
+    totalThisMonth: number
+    kg1Count: number
+    kg2Count: number
+    todayCount: number
+  }
+}
+
+// ─── Priest & Ministry Executive Report Types ───────────────────────────────
+
+export interface PriestMonthlyReportData {
+  year: number
+  month: number
+  monthNameAr: string
+  monthNameEn: string
+  totalBoysCount: number
+  overallAttendanceRate: number
+  perfectAttendanceBoys: Boy[]
+  urgentCareBoys: PastoralAlert[]
+  visitationsSummary: {
+    totalVisits: number
+    callCount: number
+    homeCount: number
+    churchCount: number
+    healthCount: number
+    generalCount: number
+  }
+  recentVisits: (CheckIn & { boy?: Pick<Boy, 'id' | 'full_name'> })[]
+  birthdaysThisMonth: BirthdayBoyInfo[]
+  generatedAt: string
 }
 

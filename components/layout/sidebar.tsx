@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Users, Settings, LogOut, X, Menu, Moon, Sun, Shield, Languages, CalendarCheck
+  LayoutDashboard, Users, Settings, LogOut, X, Menu, Moon, Sun, Shield, Languages, CalendarCheck, HeartHandshake, Cake
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
@@ -27,6 +27,8 @@ export function Sidebar({ profile }: SidebarProps) {
     { label: t('nav_dashboard'), href: '/', icon: LayoutDashboard },
     { label: t('nav_boys'), href: '/boys', icon: Users },
     { label: t('nav_attendance'), href: '/attendance', icon: CalendarCheck },
+    { label: t('nav_care'), href: '/care', icon: HeartHandshake },
+    { label: t('nav_birthdays'), href: '/birthdays', icon: Cake },
     { label: t('nav_admin'), href: '/admin', icon: Shield, adminOnly: true },
     { label: t('nav_settings'), href: '/settings', icon: Settings },
   ]
